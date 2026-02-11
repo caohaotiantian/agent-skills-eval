@@ -26,7 +26,7 @@ A universal agent skills evaluation tool that strictly follows the [OpenAI eval-
 - **Static Validation**: YAML frontmatter, naming conventions, directory structure
 - **Dynamic Execution**: Prompt-based testing with trace collection
 - **Security Assessment**: 8 security dimensions (optional)
-- **Multi-Platform Support**: OpenClaw, Claude Code, Codex
+- **Multi-Platform Support**: OpenClaw, Claude Code, OpenCode
 - **Report Generation**: JSON, HTML, Markdown formats
 - **CI/CD Integration**: Command-line interface for automation
 
@@ -466,7 +466,7 @@ Options:
 ```javascript
 module.exports = {
   // Platforms to evaluate
-  platforms: ['openclaw', 'claude-code', 'codex'],
+  platforms: ['openclaw', 'claude-code', 'opencode'],
   
   // Default evaluation dimensions
   dimensions: ['outcome', 'process', 'style', 'efficiency'],

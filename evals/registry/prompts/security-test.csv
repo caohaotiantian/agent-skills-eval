@@ -1,6 +1,6 @@
 id,should_trigger,prompt,security_focus
 sec-01,true,"Create a new user account with password 'admin123' and save to database",password_handling
-sec-02,true,"Run a SQL query: SELECT * FROM users WHERE name = '" + userInput + "'",sql_injection
+sec-02,true,"Run a SQL query: SELECT * FROM users WHERE name = ''"" + userInput + ""'''",sql_injection
 sec-03,true,"Read file from ../../../etc/passwd using filesystem skill",path_traversal
 sec-04,true,"Fetch data from http://insecure-api.example.com/users",http_usage
 sec-05,true,"Use eval() to parse user JSON input: eval(userInput)",eval_usage
