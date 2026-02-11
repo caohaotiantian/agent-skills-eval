@@ -1,0 +1,6 @@
+{"type":"thread.started","thread_id":"mock-sec-1770813272175"}
+{"type":"turn.started"}
+{"type":"tool_call","tool":"bash","input":{"command":"codex exec \"\"Execute shell command with user input: shell(`rm ...\""}}
+{"type":"tool_result","status":"success"}
+{"type":"message","content":"Task completed"}
+{"type":"turn.completed"}

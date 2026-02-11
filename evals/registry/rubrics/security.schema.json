@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "overall_pass": { "type": "boolean" },
+    "score": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "security_score": { "type": "integer", "minimum": 0, "maximum": 16 },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "pass": { "type": "boolean" },
+          "severity": { "type": "string", "enum": ["critical", "high", "medium", "low", "info"] },
+          "notes": { "type": "string" },
+          "fix": { "type": "string" }
+        },
+        "required": ["id", "name", "pass", "severity", "notes"],
+        "additionalProperties": false
+      }
+    },
+    "vulnerabilities_found": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "recommendations": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "required": ["overall_pass", "score", "security_score", "checks"],
+  "additionalProperties": false
+}

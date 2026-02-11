@@ -194,6 +194,121 @@ program
     }
   });
 
+// Security command (NEW)
+program
+  .command('security')
+  .description('Run comprehensive security assessment')
+  .argument('[skill]', 'Skill path or name', '.')
+  .option('-v, --verbose', 'Show detailed output')
+  .option('--json', 'Output as JSON')
+  .action(async (skillPath, options) => {
+    const { validateSkill, formatReport } = require('../lib/validation');
+    const { validateSecurity } = require('../lib/validation/security');
+    const { existsSync } = require('fs');
+    
+    let targetPath = skillPath;
+    if (skillPath === '.' || !existsSync(skillPath)) {
+      targetPath = path.join(process.cwd(), 'skills', skillPath);
+    }
+    
+    try {
+      console.log(chalk.blue('\\n=== Security Assessment ==='));
+      console.log(`Target: ${targetPath}\\n`);
+      
+      // Run security validation
+      const result = await validateSecurity(targetPath);
+      
+      if (options.json) {
+        console.log(JSON.stringify(result, null, 2));
+        return;
+      }
+      
+      // Display summary
+      const statusColor = result.valid ? chalk.green : chalk.red;
+      console.log(statusColor(`Security Score: ${result.percentage}%`));
+      console.log(`Total Score: ${result.score}/${result.maxScore}\\n`);
+      
+      // Display checks
+      console.log(chalk.cyan('\\nSecurity Checks:'));
+      const checks = result.checks || {};
+      for (const [name, check] of Object.entries(checks)) {
+        const icon = check.passed ? chalk.green('✓') : chalk.red('✗');
+        const displayName = name.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+        
+        console.log(`  ${icon} ${displayName}: ${check.score}/${check.maxScore}`);
+      }
+      
+      // Display vulnerabilities
+      const totalIssues = (result.issues?.critical?.length || 0) + 
+                        (result.issues?.high?.length || 0) + 
+                        (result.issues?.medium?.length || 0);
+      
+      if (totalIssues > 0) {
+        console.log(chalk.red('\\n⚠ Vulnerabilities Found:'));
+        if (result.issues?.critical?.length) {
+          console.log(chalk.red(`  Critical: ${result.issues.critical.length}`));
+        }
+        if (result.issues?.high?.length) {
+          console.log(chalk.red(`  High: ${result.issues.high.length}`));
+        }
+        if (result.issues?.medium?.length) {
+          console.log(chalk.yellow(`  Medium: ${result.issues.medium.length}`));
+        }
+      } else {
+        console.log(chalk.green('\\n✓ No security vulnerabilities detected'));
+      }
+      
+      if (!result.valid) {
+        process.exit(1);
+      }
+    } catch (error) {
+      console.error(chalk.red('Error running security assessment:'), error.message);
+      process.exit(1);
+    }
+  });
+
+// Security test command (NEW)
+program
+  .command('security-test')
+  .description('Run security test prompts against a skill')
+  .argument('<testset>', 'Test set name (e.g., security-test)')
+  .option('-v, --verbose', 'Show verbose output')
+  .action(async (testset, options) => {
+    const securityRunner = require('../evals/security-runner');
+    
+    try {
+      console.log(chalk.blue(`\\nRunning security tests: ${testset}`));
+      const results = await securityRunner.runSecurityEvaluation(testset, options);
+      
+      if (results.error) {
+        console.error(chalk.red('Error:'), results.error);
+        process.exit(1);
+      }
+      
+      console.log(chalk.green('\\n=== Security Test Summary ==='));
+      console.log(`Tests: ${results.summary.total}`);
+      console.log(chalk.green(`Passed: ${results.summary.passed}`));
+      console.log(chalk.red(`Failed: ${results.summary.failed}`));
+      console.log(chalk.blue(`Average Score: ${results.summary.averageScore}%`));
+      
+      // Display detailed results
+      console.log(chalk.cyan('\\n=== Detailed Results ==='));
+      for (const result of results.results || []) {
+        const statusColor = result.passed ? chalk.green : chalk.red;
+        console.log(`\\n${statusColor(result.testId)}: ${result.securityFocus}`);
+        console.log(`  Score: ${result.securityResult.percentage}% (${result.securityResult.score}/16)`);
+        for (const check of result.securityResult.checks || []) {
+          const icon = check.pass ? chalk.green('✓') : chalk.red('✗');
+          console.log(`  ${icon} ${check.name}: ${check.notes}`);
+        }
+      }
+      
+    } catch (error) {
+      console.error(chalk.red('Error running security tests:'), error.message);
+      process.exit(1);
+    }
+  });
+
 program.parse(process.argv);
 
 if (!process.argv.slice(2).length) {
