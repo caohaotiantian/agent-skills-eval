@@ -11,6 +11,7 @@ A universal agent skills evaluation tool that strictly follows the [OpenAI eval-
 - [Architecture](#architecture)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
+- [Test Generation](#test-generation)
 - [Evaluation Dimensions](#evaluation-dimensions)
 - [Command Reference](#command-reference)
 - [Configuration](#configuration)
@@ -25,6 +26,7 @@ A universal agent skills evaluation tool that strictly follows the [OpenAI eval-
 
 - **Static Validation**: YAML frontmatter, naming conventions, directory structure
 - **Dynamic Execution**: Prompt-based testing with trace collection
+- **LLM-Enhanced Test Generation**: Optional OpenAI integration for smarter prompts
 - **Security Assessment**: 8 security dimensions (optional)
 - **Multi-Platform Support**: OpenClaw, Claude Code, OpenCode
 - **Report Generation**: JSON, HTML, Markdown formats
@@ -61,6 +63,10 @@ A universal agent skills evaluation tool that strictly follows the [OpenAI eval-
 │      ├── Style Goals (5 criteria)                               │
 │      ├── Efficiency Goals (5 criteria)                           │
 │      └── Security Assessment (7 criteria)                        │
+├─────────────────────────────────────────────────────────────────┤
+│  LLM Integration (lib/skills/generating/)                      │
+│  ├── llm.js           → OpenAI API integration                  │
+│  └── templates.js     → Prompt template engine                 │
 ├─────────────────────────────────────────────────────────────────┤
 │  Dynamic Execution (evals/)                                    │
 │  ├── runner.js         → Eval execution engine                 │
@@ -251,6 +257,28 @@ agent-skills-eval report -i results/eval.json -f markdown -o report.md
 
 # Generate JSON report
 agent-skills-eval report -i results/eval.json -f json -o report.json
+```
+
+---
+
+## Test Generation
+
+### Auto-Generate Test Cases
+
+Generate test prompts automatically from skill definitions:
+
+```bash
+# Using template-based generation (default)
+agent-skills-eval generate coding-agent
+
+# Using LLM for smarter prompts (requires OPENAI_API_KEY)
+agent-skills-eval generate coding-agent --llm
+
+# Generate for all skills
+agent-skills-eval generate-all --llm
+
+# Control output
+agent-skills-eval generate coding-agent --output ./custom-prompts --samples 10
 ```
 
 ---
@@ -457,6 +485,38 @@ Options:
   -s, --skills           List discovered skills
 ```
 
+#### generate
+
+Generate test prompts from skill definitions.
+
+```bash
+agent-skills-eval generate <skill> [options]
+
+Arguments:
+  skill                   Skill name to generate tests for
+
+Options:
+  --llm                   Use LLM for smarter prompt generation
+  --no-llm                Use template-based generation (default)
+  -o, --output <dir>      Output directory for prompts
+  --samples <number>      Number of test samples to generate (default: 5)
+  -v, --verbose           Show verbose output
+```
+
+#### generate-all
+
+Generate test prompts for all skills.
+
+```bash
+agent-skills-eval generate-all [options]
+
+Options:
+  --llm                   Use LLM for smarter prompt generation
+  --no-llm                Use template-based generation (default)
+  -o, --output <dir>      Output directory for prompts
+  --samples <number>      Number of test samples per skill (default: 5)
+```
+
 ---
 
 ## Configuration
@@ -497,9 +557,21 @@ module.exports = {
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `MOCK_EVAL` | Use mock mode (no API calls) | `false` |
-| `OPENAI_API_KEY` | OpenAI API key for Codex | - |
+| `OPENAI_API_KEY` | OpenAI API key for LLM generation | - |
+| `OPENAI_MODEL` | Model for generation | `gpt-4o` |
 | `EVAL_TIMEOUT` | Evaluation timeout (ms) | `300000` |
 | `EVAL_OUTPUT_DIR` | Default output directory | `./results` |
+
+### LLM Configuration
+
+Set environment variables for LLM features:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OPENAI_API_KEY` | OpenAI API key for LLM generation | - |
+| `OPENAI_MODEL` | Model for generation | `gpt-4o` |
+
+**Note:** LLM features are optional. Without API key, falls back to template-based generation.
 
 ---
 
