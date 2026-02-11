@@ -309,6 +309,145 @@ program
     }
   });
 
+// Generate command (NEW - auto-generate test cases)
+program
+  .command('generate')
+  .description('Auto-generate test cases from skill analysis')
+  .alias('gen')
+  .argument('<skill>', 'Skill name or path')
+  .option('-o, --output <dir>', 'Output directory for generated prompts', './evals/registry/prompts')
+  .option('-s, --samples <number>', 'Samples per category (overrides defaults)')
+  .option('-p, --positive <number>', 'Positive cases per trigger', parseInt)
+  .option('-n, --negative <number>', 'Negative cases per skill', parseInt)
+  .option('-e, --security <number>', 'Security cases per skill', parseInt)
+  .option('-d, --description <number>', 'Description cases per skill', parseInt)
+  .option('--json', 'Output as JSON')
+  .action(async (skill, options) => {
+    const { generateTestCases } = require('../lib/skills/generating');
+    const { existsSync } = require('fs');
+
+    let skillPath = skill;
+
+    // If not an absolute or relative path, search in known locations
+    if (!path.isAbsolute(skillPath) && !skillPath.startsWith('.') && !existsSync(skillPath)) {
+      const discover = require('../lib/skills/discovering');
+      const discovery = await discover.discoverAll({ platform: 'all' });
+      const found = discovery.skills?.find(s => s.name === skill);
+      if (found) {
+        skillPath = found.path;
+      } else {
+        // Try treating as relative path
+        skillPath = path.join(process.cwd(), 'skills', skill);
+      }
+    }
+
+    if (!existsSync(skillPath)) {
+      console.error(chalk.red(`Error: Skill not found: ${skill}`));
+      console.error('Please provide a valid skill name or path.');
+      process.exit(1);
+    }
+
+    try {
+      // Build options object
+      const genOptions = { outputDir: options.output };
+      if (options.samples) {
+        genOptions.positivePerTrigger = Math.ceil(options.samples / 2);
+        genOptions.negativePerSkill = Math.floor(options.samples / 3);
+        genOptions.securityPerSkill = Math.floor(options.samples / 3);
+        genOptions.descriptionCases = Math.floor(options.samples / 4);
+      } else {
+        if (options.positive) genOptions.positivePerTrigger = options.positive;
+        if (options.negative) genOptions.negativePerSkill = options.negative;
+        if (options.security) genOptions.securityPerSkill = options.security;
+        if (options.description) genOptions.descriptionCases = options.description;
+      }
+
+      const result = await generateTestCases({
+        skillPath,
+        outputDir: options.output,
+        options: genOptions
+      });
+
+      if (options.json) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.log(chalk.green(`\n=== Generated Test Cases ===`));
+        console.log(`Skill: ${result.skillName}`);
+        console.log(`Total: ${result.promptCount} test cases`);
+        console.log(`  - Positive: ${result.positiveCount}`);
+        console.log(`  - Negative: ${result.negativeCount}`);
+        console.log(`\nCategory Breakdown:`);
+        for (const [cat, count] of Object.entries(result.categoryBreakdown || {})) {
+          console.log(`  - ${cat}: ${count}`);
+        }
+        console.log(chalk.blue(`\nOutput: ${result.csvPath}`));
+      }
+    } catch (error) {
+      console.error(chalk.red('Error generating test cases:'), error.message);
+      process.exit(1);
+    }
+  });
+
+// Generate-all command (NEW)
+program
+  .command('generate-all')
+  .description('Generate test cases for all discovered skills')
+  .option('-o, --output <dir>', 'Output directory', './evals/registry/prompts')
+  .option('-p, --platform <name>', 'Specific platform (openclaw, claude-code, opencode)')
+  .option('--json', 'Output as JSON')
+  .action(async (options) => {
+    const discover = require('../lib/skills/discovering');
+    const { generateMultiple } = require('../lib/skills/generating');
+
+    try {
+      const discovery = await discover.discoverAll({ platform: options.platform || 'all' });
+      const skillPaths = discovery.skills?.map(s => s.path) || [];
+
+      if (skillPaths.length === 0) {
+        console.log(chalk.yellow('No skills found.'));
+        return;
+      }
+
+      console.log(chalk.blue(`\nGenerating test cases for ${skillPaths.length} skills...`));
+
+      const results = await generateMultiple(skillPaths, {
+        outputDir: options.output,
+        options: {}
+      });
+
+      if (options.json) {
+        console.log(JSON.stringify(results, null, 2));
+      } else {
+        console.log(chalk.green(`\n=== Generated Test Cases ===`));
+
+        let totalSuccess = 0;
+        let totalFailed = 0;
+
+        for (const result of results) {
+          if (result.error) {
+            console.log(chalk.red(`\n✗ ${result.skillName}: ERROR - ${result.error}`));
+            totalFailed++;
+          } else {
+            console.log(chalk.green(`\n✓ ${result.skillName}: ${result.promptCount} cases`));
+            console.log(`  - Positive: ${result.positiveCount}, Negative: ${result.negativeCount}`);
+            console.log(`  - Output: ${result.csvPath}`);
+            totalSuccess++;
+          }
+        }
+
+        console.log(chalk.green(`\n=== Summary ===`));
+        console.log(`Total: ${results.length} skills`);
+        console.log(chalk.green(`Success: ${totalSuccess}`));
+        if (totalFailed > 0) {
+          console.log(chalk.red(`Failed: ${totalFailed}`));
+        }
+      }
+    } catch (error) {
+      console.error(chalk.red('Error generating test cases:'), error.message);
+      process.exit(1);
+    }
+  });
+
 program.parse(process.argv);
 
 if (!process.argv.slice(2).length) {
