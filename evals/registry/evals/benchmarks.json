@@ -1,0 +1,113 @@
+{
+  "version": "1.0",
+  "metadata": {
+    "name": "Agent Skills Evaluation Suite",
+    "description": "Comprehensive evaluation framework for agent skills",
+    "author": "OpenClaw Community",
+    "reference": "Inspired by OpenAI Evals"
+  },
+  "evals": [
+    {
+      "id": "skill-md-validation",
+      "name": "SKILL.md Metadata Validation",
+      "description": "Validates skill metadata structure",
+      "category": "metadata",
+      "criteria": [
+        {
+          "id": "has-skill-md",
+          "name": "Has SKILL.md",
+          "description": "Skill must have a SKILL.md file",
+          "weight": 1
+        },
+        {
+          "id": "has-frontmatter",
+          "name": "Has YAML Frontmatter",
+          "description": "SKILL.md should have YAML frontmatter",
+          "weight": 1
+        },
+        {
+          "id": "has-name",
+          "name": "Has Name Field",
+          "description": "Skill must have a name field",
+          "weight": 1
+        },
+        {
+          "id": "has-description",
+          "name": "Has Description",
+          "description": "Skill must have a description",
+          "weight": 1
+        },
+        {
+          "id": "has-location",
+          "name": "Has Location Tag",
+          "description": "Skill should specify its location",
+          "weight": 1
+        },
+        {
+          "id": "has-available-skills",
+          "name": "Has Available Skills Section",
+          "description": "Skill should list available sub-skills",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "skill-trigger-validation",
+      "name": "Trigger Pattern Validation",
+      "description": "Validates skill trigger definitions",
+      "category": "triggers",
+      "criteria": [
+        {
+          "id": "has-triggers-section",
+          "name": "Has Triggers Section",
+          "description": "Skill should define triggers",
+          "weight": 1
+        },
+        {
+          "id": "has-valid-patterns",
+          "name": "Valid Regex Patterns",
+          "description": "Trigger patterns should be valid regex",
+          "weight": 2
+        },
+        {
+          "id": "non-empty-triggers",
+          "name": "Non-Empty Trigger List",
+          "description": "Trigger list should not be empty",
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "code-quality",
+      "name": "Code Quality Assessment",
+      "description": "Evaluates code implementation quality",
+      "category": "quality",
+      "criteria": [
+        {
+          "id": "has-implementation",
+          "name": "Has Implementation Code",
+          "description": "Skill should have actual code",
+          "weight": 2
+        },
+        {
+          "id": "has-tests",
+          "name": "Has Test Suite",
+          "description": "Skill should have tests",
+          "weight": 2
+        },
+        {
+          "id": "has-readme",
+          "name": "Has Documentation",
+          "description": "Skill should have README",
+          "weight": 1
+        },
+        {
+          "id": "modular-structure",
+          "name": "Modular Structure",
+          "description": "Code should be modular (lib/, commands/, hooks/)",
+          "weight": 1
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "name": "agent-skills-eval",
+  "version": "1.0.0",
+  "description": "Universal agent skills evaluation tool for Claude Code, OpenCode, and other platforms",
+  "main": "lib/index.js",
+  "bin": {
+    "agent-skills-eval": "./bin/cli.js"
+  },
+  "scripts": {
+    "discover": "node bin/cli.js discover",
+    "eval": "node bin/cli.js eval",
+    "report": "node bin/cli.js report",
+    "test": "jest",
+    "test:coverage": "jest --coverage"
+  },
+  "keywords": [
+    "agent",
+    "skills",
+    "evaluation",
+    "claude-code",
+    "opencode",
+    "benchmark"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "commander": "^11.0.0",
+    "fs-extra": "^11.1.0",
+    "glob": "^10.3.0",
+    "js-yaml": "^4.1.0",
+    "node-fetch": "^3.3.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}
