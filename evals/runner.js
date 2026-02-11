@@ -30,7 +30,25 @@ function loadRubric(rubricName) {
 }
 
 function runAgent(prompt, options = {}) {
-  const { skill, verbose = false } = options;
+  const { skill, verbose = false, mock = false } = options;
+  
+  // Mock mode for testing without API key
+  if (mock || process.env.MOCK_EVAL === 'true') {
+    const mockEvents = [
+      { type: 'thread.started', thread_id: 'mock-' + Date.now() },
+      { type: 'turn.started' },
+      { type: 'tool_call', tool: 'bash', input: { command: 'codex exec "' + prompt.substring(0, 50) + '..."' } },
+      { type: 'tool_result', status: 'success' },
+      { type: 'message', content: 'Task completed successfully' },
+      { type: 'turn.completed' }
+    ];
+    return { 
+      stdout: mockEvents.map(e => JSON.stringify(e)).join('\n'), 
+      stderr: '', 
+      exitCode: 0 
+    };
+  }
+  
   const cmd = ['exec', '--json', '--full-auto', prompt];
   const result = spawnSync('codex', cmd, { encoding: 'utf8', timeout: 300000 });
   return { stdout: result.stdout || '', stderr: result.stderr || '', exitCode: result.status || 0 };
@@ -38,7 +56,7 @@ function runAgent(prompt, options = {}) {
 
 function runDeterministicChecks(events, checks) {
   const results = [];
-  const traceAnalyzer = new TraceAnalyzer(events);
+  const traceAnalyzer = new TraceAnalyzer().analyze(events);
   for (const check of checks) {
     let passed = false;
     switch (check.type) {
@@ -63,8 +81,9 @@ async function runEvaluation(skillName, options = {}) {
     const artifactPath = path.join(outputDir, `${testId}.jsonl`);
     const runResult = runAgent(prompt.prompt, { skill: skillName, verbose });
     fs.writeFileSync(artifactPath, runResult.stdout);
-    const events = parser.parseJsonl(runResult.stdout);
-    const traceReport = new TraceAnalyzer(events).generateReport();
+    const events = parser.parseJsonlString(runResult.stdout);
+    const traceAnalyzer = new TraceAnalyzer().analyze(events);
+    const traceReport = traceAnalyzer.generateReport();
     const checks = options.checks || [];
     const checkResults = runDeterministicChecks(events, checks);
     results.push({ testId, prompt: prompt.prompt, shouldTrigger: prompt.should_trigger === 'true', tracePath: artifactPath, traceReport, checkResults, passed: checkResults.every(c => c.passed) });

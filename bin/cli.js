@@ -175,8 +175,8 @@ program
     
     try {
       const content = readFileSync(traceFile, 'utf-8');
-      const events = parser.parseJsonl(content);
-      const report = new TraceAnalyzer(events).generateReport();
+      const events = parser.parseJsonlString(content);
+      const report = new TraceAnalyzer().analyze(events).generateReport();
       
       if (options.format === 'json') {
         console.log(JSON.stringify(report, null, 2));
