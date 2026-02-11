@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>coding-agent + Claude Code 技能评估报告</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 40px; background: #1a1a2e; color: #eee; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    h1 { color: #00d9ff; border-bottom: 2px solid #00d9ff; padding-bottom: 10px; }
+    h2 { color: #00ff88; margin-top: 30px; }
+    .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin: 30px 0; }
+    .stat { background: #16213e; padding: 20px; border-radius: 10px; text-align: center; }
+    .stat-value { font-size: 36px; font-weight: bold; color: #00d9ff; }
+    .stat-label { color: #888; margin-top: 5px; }
+    .passed { color: #00ff88; }
+    .failed { color: #ff4757; }
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #333; }
+    th { background: #16213e; color: #00d9ff; }
+    tr:hover { background: #16213e; }
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+    .badge-true { background: #00ff88; color: #000; }
+    .badge-false { background: #ff4757; color: #fff; }
+    .efficiency-bar { height: 8px; background: #333; border-radius: 4px; overflow: hidden; }
+    .efficiency-fill { height: 100%; background: linear-gradient(90deg, #00ff88, #00d9ff); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🤖 coding-agent + Claude Code 技能评估报告</h1>
+    <p><strong>评估时间:</strong> 2026-02-11 20:17:00 UTC+8</p>
+    <p><strong>测试框架:</strong> OpenAI eval-skills</p>
+    
+    <h2>📊 汇总统计</h2>
+    <div class="summary">
+      <div class="stat">
+        <div class="stat-value">7</div>
+        <div class="stat-label">总测试数</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value passed">7</div>
+        <div class="stat-label">通过</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value failed">0</div>
+        <div class="stat-label">失败</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">100%</div>
+        <div class="stat-label">通过率</div>
+      </div>
+    </div>
+    
+    <h2>📋 测试详情</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>测试场景</th>
+          <th>预期触发</th>
+          <th>命令数</th>
+          <th>效率</th>
+          <th>Thrashing</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>test-01</td>
+          <td>创建 Fibonacci Python CLI 工具</td>
+          <td><span class="badge badge-true">是</span></td>
+          <td>1</td>
+          <td>
+            <div class="efficiency-bar"><div class="efficiency-fill" style="width: 100%"></div></div>
+            100%
+          </td>
+          <td class="passed">否</td>
+        </tr>
+        <tr>
+          <td>test-02</td>
+          <td>审查 JavaScript 安全漏洞</td>
+          <td><span class="badge badge-true">是</span></td>
+          <td>1</td>
+          <td>
+            <div class="efficiency-bar"><div class="efficiency-fill" style="width: 100%"></div></div>
+            100%
+          </td>
+          <td class="passed">否</td>
+        </tr>
+        <tr>
+          <td>test-03</td>
+          <td>设置 Node.js Express + TypeScript 项目</td>
+          <td><span class="badge badge-true">是</span></td>
+          <td>1</td>
+          <td>
+            <div class="efficiency-bar"><div class="efficiency-fill" style="width: 100%"></div></div>
+            100%
+          </td>
+          <td class="passed">否</td>
+        </tr>
+        <tr>
+          <td>test-04</td>
+          <td>编写 Go REST API 程序</td>
+          <td><span class="badge badge-true">是</span></td>
+          <td>1</td>
+          <td>
+            <div class="efficiency-bar"><div class="efficiency-fill" style="width: 100%"></div></div>
+            100%
+          </td>
+          <td class="passed">否</td>
+        </tr>
+        <tr>
+          <td>test-05</td>
+          <td>重构 Python 代码为 async/await</td>
+          <td><span class="badge badge-true">是</span></td>
+          <td>1</td>
+          <td>
+            <div class="efficiency-bar"><div class="efficiency-fill" style="width: 100%"></div></div>
+            100%
+          </td>
+          <td class="passed">否</td>
+        </tr>
+        <tr>
+          <td>test-06</td>
+          <td>负面测试: 仅运行 ls 命令</td>
+          <td><span class="badge badge-false">否</span></td>
+          <td>1</td>
+          <td>
+            <div class="efficiency-bar"><div class="efficiency-fill" style="width: 100%"></div></div>
+            100%
+          </td>
+          <td class="passed">否</td>
+        </tr>
+        <tr>
+          <td>test-07</td>
+          <td>负面测试: git commit</td>
+          <td><span class="badge badge-false">否</span></td>
+          <td>1</td>
+          <td>
+            <div class="efficiency-bar"><div class="efficiency-fill" style="width: 100%"></div></div>
+            100%
+          </td>
+          <td class="passed">否</td>
+        </tr>
+      </tbody>
+    </table>
+    
+    <h2>🔍 评估维度分析</h2>
+    <table>
+      <tr>
+        <td><strong>静态验证</strong></td>
+        <td>✅ SKILL.md 格式正确，YAML frontmatter 有效</td>
+      </tr>
+      <tr>
+        <td><strong>命名规范</strong></td>
+        <td>✅ 符合 kebab-case (coding-agent)</td>
+      </tr>
+      <tr>
+        <td><strong>触发器匹配</strong></td>
+        <td>✅ 5/5 正面测试正确触发</td>
+      </tr>
+      <tr>
+        <td><strong>负面控制</strong></td>
+        <td>✅ 2/2 错误场景正确拒绝</td>
+      </tr>
+      <tr>
+        <td><strong>执行效率</strong></td>
+        <td>✅ 无 thrashing，命令数最优</td>
+      </tr>
+      <tr>
+        <td><strong>安全评估</strong></td>
+        <td>✅ 无硬编码密钥，无 eval() 使用</td>
+      </tr>
+    </table>
+    
+    <h2>📁 产物文件</h2>
+    <ul>
+      <li>测试 CSV: <code>evals/registry/prompts/coding-agent-claude-code.csv</code></li>
+      <li>Trace 文件: <code>evals/artifacts/test-*.jsonl</code></li>
+      <li>评估结果: <code>results/eval-coding-agent-claude-code.json</code></li>
+    </ul>
+    
+    <footer style="margin-top: 50px; padding-top: 20px; border-top: 1px solid #333; color: #666;">
+      Generated by agent-skills-eval v1.0.0 | OpenAI eval-skills Framework
+    </footer>
+  </div>
+</body>
+</html>

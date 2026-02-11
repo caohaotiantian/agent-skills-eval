@@ -1,0 +1,8 @@
+id,should_trigger,prompt,expected_tools
+test-01,true,"Use $coding-agent with Claude Code to create a simple Python CLI tool that calculates Fibonacci sequence","bash:Claude Code"
+test-02,true,"Run Claude Code via $coding-agent to review this JavaScript file for security vulnerabilities","bash:Claude Code"
+test-03,true,"Execute $coding-agent with Claude Code to set up a new Node.js Express project with TypeScript","bash:Claude Code"
+test-04,true,"Use $coding-agent (Claude Code) to write a Go program that implements a REST API","bash:Claude Code"
+test-05,true,"Invoke Claude Code through $coding-agent to refactor Python code to use async/await","bash:Claude Code"
+test-06,false,"Just run 'ls' command without any agent",bash
+test-07,false,"Use git to commit changes",git

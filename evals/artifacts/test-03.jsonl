@@ -1,6 +1,6 @@
-{"type":"thread.started","thread_id":"mock-1770812022787"}
+{"type":"thread.started","thread_id":"mock-1770812216539"}
 {"type":"turn.started"}
-{"type":"tool_call","tool":"bash","input":{"command":"codex exec \"Set up a new Node.js project with TypeScript...\""}}
+{"type":"tool_call","tool":"bash","input":{"command":"codex exec \"Execute $coding-agent with Claude Code to set up a...\""}}
 {"type":"tool_result","status":"success"}
 {"type":"message","content":"Task completed successfully"}
 {"type":"turn.completed"}
