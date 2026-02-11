@@ -1,0 +1,5 @@
+id,should_trigger,prompt
+test-01,true,"Use the $coding-agent skill to create a new CLI tool"
+test-02,true,"Create a Python script that fetches API data"
+test-03,true,"Set up a new Node.js project with TypeScript"
+test-04,false,"Fix this bug in my existing code"

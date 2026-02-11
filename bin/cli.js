@@ -10,7 +10,7 @@ const program = new Command();
 
 program
   .name('agent-skills-eval')
-  .description('Universal agent skills evaluation tool')
+  .description('Universal agent skills evaluation tool (OpenAI eval-skills compliant)')
   .version(packageJson.version);
 
 // Discover command
@@ -34,10 +34,38 @@ program
     }
   });
 
-// Evaluate command
+// Validate command (NEW)
+program
+  .command('validate')
+  .description('Validate skill structure and frontmatter')
+  .argument('[skill]', 'Skill path or name', '.')
+  .option('-v, --verbose', 'Show detailed output')
+  .action(async (skillPath, options) => {
+    const { validateSkill, formatReport } = require('../lib/validation');
+    const { existsSync } = require('fs');
+    
+    let targetPath = skillPath;
+    if (skillPath === '.' || !existsSync(skillPath)) {
+      targetPath = path.join(process.cwd(), 'skills', skillPath);
+    }
+    
+    try {
+      const report = await validateSkill(targetPath);
+      console.log(formatReport(report, { verbose: options.verbose }));
+      
+      if (!report.valid) {
+        process.exit(1);
+      }
+    } catch (error) {
+      console.error(chalk.red('Validation error:'), error.message);
+      process.exit(1);
+    }
+  });
+
+// Eval command (static analysis)
 program
   .command('eval')
-  .description('Run skill evaluations')
+  .description('Run static skill evaluations')
   .option('-p, --platform <name>', 'Platform to evaluate', 'all')
   .option('-s, --skill <name>', 'Specific skill to evaluate')
   .option('-b, --benchmark <name>', 'Benchmark to run')
@@ -55,6 +83,40 @@ program
       } else {
         evaluate.displayResults(results);
       }
+    } catch (error) {
+      console.error(chalk.red('Error running evaluation:'), error.message);
+      process.exit(1);
+    }
+  });
+
+// Run command (NEW - dynamic execution)
+program
+  .command('run')
+  .description('Run dynamic skill evaluations with trace analysis')
+  .argument('<skill>', 'Skill name to evaluate')
+  .option('-v, --verbose', 'Show verbose output')
+  .option('--output <dir>', 'Output directory for traces', 'evals/artifacts')
+  .action(async (skillName, options) => {
+    const runner = require('../evals/runner');
+    
+    try {
+      console.log(chalk.blue(`\\nRunning dynamic evaluation for: ${skillName}`));
+      const results = await runner.runEvaluation(skillName, { 
+        verbose: options.verbose,
+        outputDir: options.output
+      });
+      
+      if (results.error) {
+        console.error(chalk.red('Error:'), results.error);
+        process.exit(1);
+      }
+      
+      console.log(chalk.green('\\n=== Evaluation Summary ==='));
+      console.log(`Skills: ${results.skillName}`);
+      console.log(`Tests: ${results.summary.total}`);
+      console.log(chalk.green(`Passed: ${results.summary.passed}`));
+      console.log(chalk.red(`Failed: ${results.summary.failed}`));
+      
     } catch (error) {
       console.error(chalk.red('Error running evaluation:'), error.message);
       process.exit(1);
@@ -85,10 +147,51 @@ program
 // List command
 program
   .command('list')
-  .description('List available benchmarks')
-  .action(() => {
-    const benchmark = require('../lib/skills/benchmarking');
-    benchmark.listBenchmarks();
+  .description('List available benchmarks or skills')
+  .option('-b, --benchmarks', 'List benchmarks')
+  .option('-s, --skills', 'List discovered skills')
+  .action(async (options) => {
+    if (options.benchmarks) {
+      const benchmark = require('../lib/skills/benchmarking');
+      benchmark.listBenchmarks();
+    } else if (options.skills) {
+      const discover = require('../lib/skills/discovering');
+      const skills = await discover.discoverAll({ platform: 'all' });
+      discover.displaySkills(skills);
+    } else {
+      const benchmark = require('../lib/skills/benchmarking');
+      benchmark.listBenchmarks();
+    }
+  });
+
+// Trace command (NEW)
+program
+  .command('trace <file>')
+  .description('Analyze a JSONL trace file')
+  .option('-f, --format <format>', 'Output format (text, json)', 'text')
+  .action((traceFile, options) => {
+    const { TraceAnalyzer, parser } = require('../lib/tracing');
+    const { readFileSync } = require('fs');
+    
+    try {
+      const content = readFileSync(traceFile, 'utf-8');
+      const events = parser.parseJsonl(content);
+      const report = new TraceAnalyzer(events).generateReport();
+      
+      if (options.format === 'json') {
+        console.log(JSON.stringify(report, null, 2));
+      } else {
+        console.log(chalk.blue('\\n=== Trace Analysis ==='));
+        console.log(`Commands: ${report.commandCount}`);
+        console.log(`Efficiency Score: ${report.efficiencyScore}`);
+        console.log(`Thrashing: ${report.thrashing.isThrashing ? 'Yes' : 'No'}`);
+        console.log(`Files Created: ${report.createdFiles.length}`);
+        console.log(`Token Usage:`, report.tokenUsage);
+      }
+    } catch (error) {
+      console.error(chalk.red('Error analyzing trace:'), error.message);
+      process.exit(1);
+    }
   });
 
 program.parse(process.argv);
