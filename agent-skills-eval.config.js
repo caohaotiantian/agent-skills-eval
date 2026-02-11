@@ -40,5 +40,24 @@ module.exports = {
     format: 'html',
     directory: './results',
     artifacts: './evals/artifacts'
+  },
+
+  // LLM Configuration
+  llm: {
+    enabled: true,           // Enable LLM features
+    provider: 'openai',      // LLM provider (openai, anthropic, etc.)
+    model: 'gpt-4o',         // Model to use
+    temperature: 0.8,        // Generation temperature
+    maxTokens: 2000,          // Max tokens per request
+    timeout: 30000,           // Request timeout in ms
+    retryAttempts: 3,         // Number of retry attempts
+    retryDelay: 1000          // Delay between retries (ms)
+  },
+
+  // Generation settings
+  generation: {
+    defaultSamples: 5,       // Default prompts per category
+    maxSamples: 20,          // Maximum prompts per category
+    templateFallback: true    // Use templates if LLM fails
   }
 };
