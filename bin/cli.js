@@ -321,6 +321,8 @@ program
   .option('-n, --negative <number>', 'Negative cases per skill', parseInt)
   .option('-e, --security <number>', 'Security cases per skill', parseInt)
   .option('-d, --description <number>', 'Description cases per skill', parseInt)
+  .option('--llm', 'Use LLM (OpenAI) for generating test prompts (requires OPENAI_API_KEY)')
+  .option('--no-llm', 'Use template-based generation (default behavior)')
   .option('--json', 'Output as JSON')
   .action(async (skill, options) => {
     const { generateTestCases } = require('../lib/skills/generating');
@@ -362,6 +364,14 @@ program
         if (options.description) genOptions.descriptionCases = options.description;
       }
 
+      // Handle LLM options
+      if (options.llm === true) {
+        genOptions.useLLM = true;
+      } else if (options.llm === false) {
+        genOptions.useLLM = false;
+      }
+      // If not specified, will default based on OPENAI_API_KEY availability
+
       const result = await generateTestCases({
         skillPath,
         outputDir: options.output,
@@ -376,6 +386,9 @@ program
         console.log(`Total: ${result.promptCount} test cases`);
         console.log(`  - Positive: ${result.positiveCount}`);
         console.log(`  - Negative: ${result.negativeCount}`);
+        if (result.usingLLM) {
+          console.log(chalk.blue(`  - Generated using: LLM (OpenAI)`));
+        }
         console.log(`\nCategory Breakdown:`);
         for (const [cat, count] of Object.entries(result.categoryBreakdown || {})) {
           console.log(`  - ${cat}: ${count}`);
@@ -394,6 +407,8 @@ program
   .description('Generate test cases for all discovered skills')
   .option('-o, --output <dir>', 'Output directory', './evals/registry/prompts')
   .option('-p, --platform <name>', 'Specific platform (openclaw, claude-code, opencode)')
+  .option('--llm', 'Use LLM (OpenAI) for generating test prompts (requires OPENAI_API_KEY)')
+  .option('--no-llm', 'Use template-based generation (default behavior)')
   .option('--json', 'Output as JSON')
   .action(async (options) => {
     const discover = require('../lib/skills/discovering');
@@ -410,9 +425,17 @@ program
 
       console.log(chalk.blue(`\nGenerating test cases for ${skillPaths.length} skills...`));
 
+      // Build options object
+      const genOptions = { outputDir: options.output };
+      if (options.llm === true) {
+        genOptions.useLLM = true;
+      } else if (options.llm === false) {
+        genOptions.useLLM = false;
+      }
+
       const results = await generateMultiple(skillPaths, {
         outputDir: options.output,
-        options: {}
+        options: genOptions
       });
 
       if (options.json) {
@@ -430,6 +453,9 @@ program
           } else {
             console.log(chalk.green(`\n✓ ${result.skillName}: ${result.promptCount} cases`));
             console.log(`  - Positive: ${result.positiveCount}, Negative: ${result.negativeCount}`);
+            if (result.usingLLM) {
+              console.log(`  - Generated using: LLM (OpenAI)`);
+            }
             console.log(`  - Output: ${result.csvPath}`);
             totalSuccess++;
           }

@@ -4,7 +4,12 @@ const {
   generateDescriptionPrompt,
   generateNegativePrompt,
   generateSecurityPrompt,
-  inferExpectedTools
+  inferExpectedTools,
+  isLLMEnabled,
+  generateWithLLM,
+  generateTestPromptsWithLLM,
+  PROMPT_CONFIG,
+  TRIGGER_SYNONYMS
 } = require('../../lib/skills/generating/prompt-generator');
 
 describe('Prompt Generator', () => {
@@ -20,7 +25,7 @@ describe('Prompt Generator', () => {
         }]
       };
 
-      const prompts = generateTestPrompts(skillAnalysis);
+      const prompts = await generateTestPrompts(skillAnalysis);
 
       expect(prompts).toBeInstanceOf(Array);
       expect(prompts.length).toBeGreaterThan(0);
@@ -44,7 +49,7 @@ describe('Prompt Generator', () => {
         }]
       };
 
-      const prompts = generateTestPrompts(skillAnalysis);
+      const prompts = await generateTestPrompts(skillAnalysis);
       const negativePrompts = prompts.filter(p => p.should_trigger === false);
 
       expect(negativePrompts.length).toBeGreaterThan(0);
@@ -66,7 +71,7 @@ describe('Prompt Generator', () => {
         }]
       };
 
-      const prompts = generateTestPrompts(skillAnalysis);
+      const prompts = await generateTestPrompts(skillAnalysis);
       const securityPrompts = prompts.filter(p => p.category === 'security');
 
       expect(securityPrompts.length).toBeGreaterThan(0);
@@ -83,7 +88,7 @@ describe('Prompt Generator', () => {
         }]
       };
 
-      const prompts = generateTestPrompts(skillAnalysis);
+      const prompts = await generateTestPrompts(skillAnalysis);
       const descriptionPrompts = prompts.filter(p => p.category === 'description');
 
       expect(descriptionPrompts.length).toBeGreaterThan(0);
@@ -105,7 +110,7 @@ describe('Prompt Generator', () => {
         }]
       };
 
-      const prompts = generateTestPrompts(skillAnalysis);
+      const prompts = await generateTestPrompts(skillAnalysis);
       const positivePrompts = prompts.filter(p => p.should_trigger === true);
 
       expect(positivePrompts.length).toBeGreaterThan(0);
@@ -235,6 +240,197 @@ describe('Prompt Generator', () => {
       const tools = inferExpectedTools(skill, skillAnalysis);
 
       expect(tools).toContain('bash');
+    });
+  });
+});
+
+describe('LLM-based Prompt Generation', () => {
+  const skillAnalysis = {
+    name: 'coding-agent',
+    description: 'Create CLI tools, scripts, and applications',
+    availableSkills: [{
+      name: 'create-cli',
+      triggers: ['create tool', 'new cli'],
+      description: 'Create a new CLI application'
+    }]
+  };
+
+  describe('isLLMEnabled', () => {
+    it('should be exported as a function', () => {
+      expect(typeof isLLMEnabled).toBe('function');
+    });
+
+    it('should return false when OPENAI_API_KEY is not set and openai package is not installed', () => {
+      // Without the package, isLLMEnabled will return false
+      // This test verifies the function is exported and callable
+      const result = isLLMEnabled();
+      // Result should be falsy when no API key is set and no openai package
+      expect(result).toBeFalsy();
+    });
+
+    it('should return truthy value when OPENAI_API_KEY is set', () => {
+      // Save original value
+      const originalKey = process.env.OPENAI_API_KEY;
+      process.env.OPENAI_API_KEY = 'test-key';
+
+      const result = isLLMEnabled();
+
+      // Restore original value
+      if (originalKey !== undefined) {
+        process.env.OPENAI_API_KEY = originalKey;
+      } else {
+        delete process.env.OPENAI_API_KEY;
+      }
+
+      expect(result).toBeTruthy();
+    });
+  });
+
+  describe('generateWithLLM', () => {
+    it('should be exported as a function', () => {
+      expect(typeof generateWithLLM).toBe('function');
+    });
+
+    it('should throw error when OPENAI_API_KEY is not set', async () => {
+      // Save original value
+      const originalKey = process.env.OPENAI_API_KEY;
+      delete process.env.OPENAI_API_KEY;
+
+      await expect(generateWithLLM(skillAnalysis, 'positive', 2))
+        .rejects.toThrow('LLM generation is not enabled');
+
+      // Restore original value
+      if (originalKey !== undefined) {
+        process.env.OPENAI_API_KEY = originalKey;
+      }
+    });
+  });
+
+  describe('generateTestPromptsWithLLM', () => {
+    it('should be exported as a function', () => {
+      expect(typeof generateTestPromptsWithLLM).toBe('function');
+    });
+
+    it('should throw error when OPENAI_API_KEY is not set', async () => {
+      const llmSkillAnalysis = {
+        name: 'coding-agent',
+        description: 'Create CLI tools',
+        availableSkills: [{
+          name: 'create-cli',
+          triggers: ['create tool'],
+          description: 'Create a new CLI application'
+        }]
+      };
+
+      // Save original value
+      const originalKey = process.env.OPENAI_API_KEY;
+      delete process.env.OPENAI_API_KEY;
+
+      await expect(generateTestPromptsWithLLM(llmSkillAnalysis))
+        .rejects.toThrow('LLM generation is not enabled');
+
+      // Restore original value
+      if (originalKey !== undefined) {
+        process.env.OPENAI_API_KEY = originalKey;
+      }
+    });
+
+    it('should throw error when useLLM is false', async () => {
+      const llmSkillAnalysis = {
+        name: 'coding-agent',
+        description: 'Create CLI tools',
+        availableSkills: [{
+          name: 'create-cli',
+          triggers: ['create tool'],
+          description: 'Create a new CLI application'
+        }]
+      };
+
+      // Save original value
+      const originalKey = process.env.OPENAI_API_KEY;
+      delete process.env.OPENAI_API_KEY;
+
+      await expect(generateTestPromptsWithLLM(llmSkillAnalysis, { useLLM: false }))
+        .rejects.toThrow('LLM generation is not enabled');
+
+      // Restore original value
+      if (originalKey !== undefined) {
+        process.env.OPENAI_API_KEY = originalKey;
+      }
+    });
+  });
+
+  describe('generateTestPrompts with LLM option', () => {
+    const testSkillAnalysis = {
+      name: 'coding-agent',
+      description: 'Create CLI tools',
+      availableSkills: [{
+        name: 'create-cli',
+        triggers: ['create tool'],
+        description: 'Create a new CLI application'
+      }]
+    };
+
+    it('should use template-based generation when useLLM is false', async () => {
+      const prompts = await generateTestPrompts(testSkillAnalysis, { useLLM: false });
+
+      expect(prompts).toBeInstanceOf(Array);
+      expect(prompts.length).toBeGreaterThan(0);
+    });
+
+    it('should return Promise when useLLM option is provided', async () => {
+      const prompts = await generateTestPrompts(testSkillAnalysis, { useLLM: false });
+
+      expect(prompts).toBeInstanceOf(Array);
+    });
+
+    it('should use template-based when useLLM is true but API key not available', async () => {
+      // Save original value
+      const originalKey = process.env.OPENAI_API_KEY;
+      delete process.env.OPENAI_API_KEY;
+
+      const prompts = await generateTestPrompts(testSkillAnalysis, { useLLM: true });
+
+      expect(prompts).toBeInstanceOf(Array);
+      expect(prompts.length).toBeGreaterThan(0);
+
+      // Restore original value
+      if (originalKey !== undefined) {
+        process.env.OPENAI_API_KEY = originalKey;
+      }
+    });
+  });
+
+  describe('Exports and Constants', () => {
+    it('should export generateWithLLM function', () => {
+      const { generateWithLLM: gg } = require('../../lib/skills/generating/prompt-generator');
+      expect(typeof gg).toBe('function');
+    });
+
+    it('should export generateTestPromptsWithLLM function', () => {
+      const { generateTestPromptsWithLLM: gtpwllm } = require('../../lib/skills/generating/prompt-generator');
+      expect(typeof gtpwllm).toBe('function');
+    });
+
+    it('should export isLLMEnabled function', () => {
+      const { isLLMEnabled: ile } = require('../../lib/skills/generating/prompt-generator');
+      expect(typeof ile).toBe('function');
+    });
+
+    it('should export PROMPT_CONFIG constant', () => {
+      const { PROMPT_CONFIG } = require('../../lib/skills/generating/prompt-generator');
+      expect(PROMPT_CONFIG).toBeDefined();
+      expect(PROMPT_CONFIG.positivePerTrigger).toBe(2);
+      expect(PROMPT_CONFIG.negativePerSkill).toBe(3);
+      expect(PROMPT_CONFIG.securityPerSkill).toBe(2);
+      expect(PROMPT_CONFIG.descriptionCases).toBe(2);
+    });
+
+    it('should export TRIGGER_SYNONYMS constant', () => {
+      const { TRIGGER_SYNONYMS } = require('../../lib/skills/generating/prompt-generator');
+      expect(TRIGGER_SYNONYMS).toBeDefined();
+      expect(TRIGGER_SYNONYMS.create).toEqual(['make', 'build', 'develop', 'write', 'generate']);
+      expect(TRIGGER_SYNONYMS['new']).toEqual(['fresh', 'initialize', 'setup', 'initiate']);
     });
   });
 });
