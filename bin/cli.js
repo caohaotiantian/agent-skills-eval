@@ -100,7 +100,7 @@ program
     const runner = require('../evals/runner');
     
     try {
-      console.log(chalk.blue(`\\nRunning dynamic evaluation for: ${skillName}`));
+      console.log(chalk.blue(`\nRunning dynamic evaluation for: ${skillName}`));
       const results = await runner.runEvaluation(skillName, { 
         verbose: options.verbose,
         outputDir: options.output
@@ -111,7 +111,7 @@ program
         process.exit(1);
       }
       
-      console.log(chalk.green('\\n=== Evaluation Summary ==='));
+      console.log(chalk.green('\n=== Evaluation Summary ==='));
       console.log(`Skills: ${results.skillName}`);
       console.log(`Tests: ${results.summary.total}`);
       console.log(chalk.green(`Passed: ${results.summary.passed}`));
@@ -181,7 +181,7 @@ program
       if (options.format === 'json') {
         console.log(JSON.stringify(report, null, 2));
       } else {
-        console.log(chalk.blue('\\n=== Trace Analysis ==='));
+        console.log(chalk.blue('\n=== Trace Analysis ==='));
         console.log(`Commands: ${report.commandCount}`);
         console.log(`Efficiency Score: ${report.efficiencyScore}`);
         console.log(`Thrashing: ${report.thrashing.isThrashing ? 'Yes' : 'No'}`);
@@ -212,8 +212,8 @@ program
     }
     
     try {
-      console.log(chalk.blue('\\n=== Security Assessment ==='));
-      console.log(`Target: ${targetPath}\\n`);
+      console.log(chalk.blue('\n=== Security Assessment ==='));
+      console.log(`Target: ${targetPath}\n`);
       
       // Run security validation
       const result = await validateSecurity(targetPath);
@@ -226,10 +226,10 @@ program
       // Display summary
       const statusColor = result.valid ? chalk.green : chalk.red;
       console.log(statusColor(`Security Score: ${result.percentage}%`));
-      console.log(`Total Score: ${result.score}/${result.maxScore}\\n`);
+      console.log(`Total Score: ${result.score}/${result.maxScore}\n`);
       
       // Display checks
-      console.log(chalk.cyan('\\nSecurity Checks:'));
+      console.log(chalk.cyan('\nSecurity Checks:'));
       const checks = result.checks || {};
       for (const [name, check] of Object.entries(checks)) {
         const icon = check.passed ? chalk.green('✓') : chalk.red('✗');
@@ -244,7 +244,7 @@ program
                         (result.issues?.medium?.length || 0);
       
       if (totalIssues > 0) {
-        console.log(chalk.red('\\n⚠ Vulnerabilities Found:'));
+        console.log(chalk.red('\n⚠ Vulnerabilities Found:'));
         if (result.issues?.critical?.length) {
           console.log(chalk.red(`  Critical: ${result.issues.critical.length}`));
         }
@@ -255,7 +255,7 @@ program
           console.log(chalk.yellow(`  Medium: ${result.issues.medium.length}`));
         }
       } else {
-        console.log(chalk.green('\\n✓ No security vulnerabilities detected'));
+        console.log(chalk.green('\n✓ No security vulnerabilities detected'));
       }
       
       if (!result.valid) {
@@ -277,7 +277,7 @@ program
     const securityRunner = require('../evals/security-runner');
     
     try {
-      console.log(chalk.blue(`\\nRunning security tests: ${testset}`));
+      console.log(chalk.blue(`\nRunning security tests: ${testset}`));
       const results = await securityRunner.runSecurityEvaluation(testset, options);
       
       if (results.error) {
@@ -285,17 +285,17 @@ program
         process.exit(1);
       }
       
-      console.log(chalk.green('\\n=== Security Test Summary ==='));
+      console.log(chalk.green('\n=== Security Test Summary ==='));
       console.log(`Tests: ${results.summary.total}`);
       console.log(chalk.green(`Passed: ${results.summary.passed}`));
       console.log(chalk.red(`Failed: ${results.summary.failed}`));
       console.log(chalk.blue(`Average Score: ${results.summary.averageScore}%`));
       
       // Display detailed results
-      console.log(chalk.cyan('\\n=== Detailed Results ==='));
+      console.log(chalk.cyan('\n=== Detailed Results ==='));
       for (const result of results.results || []) {
         const statusColor = result.passed ? chalk.green : chalk.red;
-        console.log(`\\n${statusColor(result.testId)}: ${result.securityFocus}`);
+        console.log(`\n${statusColor(result.testId)}: ${result.securityFocus}`);
         console.log(`  Score: ${result.securityResult.percentage}% (${result.securityResult.score}/16)`);
         for (const check of result.securityResult.checks || []) {
           const icon = check.pass ? chalk.green('✓') : chalk.red('✗');
@@ -334,7 +334,7 @@ program
     if (!path.isAbsolute(skillPath) && !skillPath.startsWith('.') && !existsSync(skillPath)) {
       const discover = require('../lib/skills/discovering');
       const discovery = await discover.discoverAll({ platform: 'all' });
-      const found = discovery.skills?.find(s => s.name === skill);
+      const found = discover.findSkill(discovery, skill);
       if (found) {
         skillPath = found.path;
       } else {
@@ -416,7 +416,7 @@ program
 
     try {
       const discovery = await discover.discoverAll({ platform: options.platform || 'all' });
-      const skillPaths = discovery.skills?.map(s => s.path) || [];
+      const skillPaths = discover.getAllSkills(discovery).map(s => s.path);
 
       if (skillPaths.length === 0) {
         console.log(chalk.yellow('No skills found.'));

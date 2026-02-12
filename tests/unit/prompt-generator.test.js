@@ -8,6 +8,7 @@ const {
   isLLMEnabled,
   generateWithLLM,
   generateTestPromptsWithLLM,
+  _resetConfigCache,
   PROMPT_CONFIG,
   TRIGGER_SYNONYMS
 } = require('../../lib/skills/generating/prompt-generator');
@@ -260,11 +261,22 @@ describe('LLM-based Prompt Generation', () => {
       expect(typeof isLLMEnabled).toBe('function');
     });
 
-    it('should return false when OPENAI_API_KEY is not set and openai package is not installed', () => {
-      // Without the package, isLLMEnabled will return false
-      // This test verifies the function is exported and callable
+    it('should return false when OPENAI_API_KEY is not set and no baseURL configured', () => {
+      const originalKey = process.env.OPENAI_API_KEY;
+      const originalBase = process.env.OPENAI_BASE_URL;
+      delete process.env.OPENAI_API_KEY;
+      delete process.env.OPENAI_BASE_URL;
+      // Inject empty config so disk config (which has baseURL) is not loaded
+      _resetConfigCache({});
+
       const result = isLLMEnabled();
-      // Result should be falsy when no API key is set and no openai package
+
+      // Restore
+      if (originalKey !== undefined) process.env.OPENAI_API_KEY = originalKey;
+      if (originalBase !== undefined) process.env.OPENAI_BASE_URL = originalBase;
+      _resetConfigCache();
+
+      // Without API key and without baseURL, isLLMEnabled should be false
       expect(result).toBeFalsy();
     });
 
@@ -291,18 +303,19 @@ describe('LLM-based Prompt Generation', () => {
       expect(typeof generateWithLLM).toBe('function');
     });
 
-    it('should throw error when OPENAI_API_KEY is not set', async () => {
-      // Save original value
+    it('should throw error when LLM is not enabled (no key, no baseURL)', async () => {
       const originalKey = process.env.OPENAI_API_KEY;
+      const originalBase = process.env.OPENAI_BASE_URL;
       delete process.env.OPENAI_API_KEY;
+      delete process.env.OPENAI_BASE_URL;
+      _resetConfigCache({});
 
       await expect(generateWithLLM(skillAnalysis, 'positive', 2))
         .rejects.toThrow('LLM generation is not enabled');
 
-      // Restore original value
-      if (originalKey !== undefined) {
-        process.env.OPENAI_API_KEY = originalKey;
-      }
+      if (originalKey !== undefined) process.env.OPENAI_API_KEY = originalKey;
+      if (originalBase !== undefined) process.env.OPENAI_BASE_URL = originalBase;
+      _resetConfigCache();
     });
   });
 
@@ -311,7 +324,7 @@ describe('LLM-based Prompt Generation', () => {
       expect(typeof generateTestPromptsWithLLM).toBe('function');
     });
 
-    it('should throw error when OPENAI_API_KEY is not set', async () => {
+    it('should throw when LLM is not enabled (no key, no baseURL)', async () => {
       const llmSkillAnalysis = {
         name: 'coding-agent',
         description: 'Create CLI tools',
@@ -322,17 +335,18 @@ describe('LLM-based Prompt Generation', () => {
         }]
       };
 
-      // Save original value
       const originalKey = process.env.OPENAI_API_KEY;
+      const originalBase = process.env.OPENAI_BASE_URL;
       delete process.env.OPENAI_API_KEY;
+      delete process.env.OPENAI_BASE_URL;
+      _resetConfigCache({});
 
       await expect(generateTestPromptsWithLLM(llmSkillAnalysis))
         .rejects.toThrow('LLM generation is not enabled');
 
-      // Restore original value
-      if (originalKey !== undefined) {
-        process.env.OPENAI_API_KEY = originalKey;
-      }
+      if (originalKey !== undefined) process.env.OPENAI_API_KEY = originalKey;
+      if (originalBase !== undefined) process.env.OPENAI_BASE_URL = originalBase;
+      _resetConfigCache();
     });
 
     it('should throw error when useLLM is false', async () => {
@@ -346,17 +360,15 @@ describe('LLM-based Prompt Generation', () => {
         }]
       };
 
-      // Save original value
       const originalKey = process.env.OPENAI_API_KEY;
       delete process.env.OPENAI_API_KEY;
+      _resetConfigCache();
 
       await expect(generateTestPromptsWithLLM(llmSkillAnalysis, { useLLM: false }))
         .rejects.toThrow('LLM generation is not enabled');
 
-      // Restore original value
-      if (originalKey !== undefined) {
-        process.env.OPENAI_API_KEY = originalKey;
-      }
+      if (originalKey !== undefined) process.env.OPENAI_API_KEY = originalKey;
+      _resetConfigCache();
     });
   });
 
@@ -384,20 +396,24 @@ describe('LLM-based Prompt Generation', () => {
       expect(prompts).toBeInstanceOf(Array);
     });
 
-    it('should use template-based when useLLM is true but API key not available', async () => {
-      // Save original value
+    it('should use template-based when useLLM is true but LLM not available', async () => {
+      // Save original values
       const originalKey = process.env.OPENAI_API_KEY;
+      const originalBase = process.env.OPENAI_BASE_URL;
       delete process.env.OPENAI_API_KEY;
+      delete process.env.OPENAI_BASE_URL;
+      _resetConfigCache({});
 
+      // With no API key and no baseURL, generateTestPrompts should fall back to template-based
       const prompts = await generateTestPrompts(testSkillAnalysis, { useLLM: true });
 
       expect(prompts).toBeInstanceOf(Array);
       expect(prompts.length).toBeGreaterThan(0);
 
-      // Restore original value
-      if (originalKey !== undefined) {
-        process.env.OPENAI_API_KEY = originalKey;
-      }
+      // Restore original values
+      if (originalKey !== undefined) process.env.OPENAI_API_KEY = originalKey;
+      if (originalBase !== undefined) process.env.OPENAI_BASE_URL = originalBase;
+      _resetConfigCache();
     });
   });
 

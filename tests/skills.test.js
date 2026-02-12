@@ -9,7 +9,10 @@ describe('Skill Discovery', () => {
     expect(PLATFORMS).toBeDefined();
     expect(PLATFORMS['claude-code']).toBeDefined();
     expect(PLATFORMS['opencode']).toBeDefined();
-    expect(PLATFORMS['claude-code'].pluginsPath).toBe('~/.claude/plugins/');
+    expect(PLATFORMS['claude-code'].sources).toBeDefined();
+    expect(PLATFORMS['claude-code'].sources.personal).toBe('~/.claude/skills/');
+    expect(PLATFORMS['claude-code'].sources.plugins).toBe('~/.claude/plugins/');
+    expect(PLATFORMS['claude-code'].sources.project).toBe('.claude/skills/');
   });
   
   test('discovering module exports are correct', () => {
@@ -17,7 +20,9 @@ describe('Skill Discovery', () => {
     
     expect(typeof discovering.discoverAll).toBe('function');
     expect(typeof discovering.displaySkills).toBe('function');
-    expect(typeof discovering.parseSkillMetadata).toBe('function');
+    expect(typeof discovering.parseSkillMd).toBe('function');
+    expect(typeof discovering.discoverClaudeCode).toBe('function');
+    expect(typeof discovering.expandHome).toBe('function');
   });
 });
 

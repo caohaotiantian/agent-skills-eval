@@ -46,10 +46,11 @@ module.exports = {
   llm: {
     enabled: true,           // Enable LLM features
     provider: 'openai',      // LLM provider (openai, anthropic, etc.)
-    model: 'gpt-4o',         // Model to use
+    baseURL: 'http://127.0.0.1:1234/v1',  // OpenAI-compatible API base URL (env: OPENAI_BASE_URL)
+    model: 'openai/gpt-oss-20b',         // Model to use (env: OPENAI_MODEL)
     temperature: 0.8,        // Generation temperature
-    maxTokens: 2000,          // Max tokens per request
-    timeout: 30000,           // Request timeout in ms
+    maxTokens: 20000,          // Max tokens per request
+    timeout: 120000,          // Request timeout in ms (local models may need more time)
     retryAttempts: 3,         // Number of retry attempts
     retryDelay: 1000          // Delay between retries (ms)
   },
