@@ -111,6 +111,103 @@ async function runAgent(prompt, options = {}) {
 }
 
 // ---------------------------------------------------------------------------
+// Trigger validation
+// ---------------------------------------------------------------------------
+
+/**
+ * Non-actionable tool calls that don't count as "skill triggered".
+ * These are clarification/meta tools, not productive actions.
+ */
+const CLARIFICATION_TOOLS = new Set([
+  'AskUserQuestion', 'AskUser', 'askuser',
+  'EnterPlanMode', 'ExitPlanMode',
+  'Skill', 'ToolSearch',
+  'TodoWrite', 'TaskStop'
+]);
+
+/**
+ * Validate whether the skill was triggered based on trace events.
+ *
+ * Strategy:
+ * 1. If expected_tools are defined in the CSV → check that at least one
+ *    expected tool was actually called in the trace.
+ * 2. If expected_tools are empty → heuristic: the agent must have produced
+ *    at least one "substantive" tool call (not just clarification) OR at
+ *    least one message with meaningful content (> 80 chars, not just a
+ *    follow-up question).
+ *
+ * @param {Object} params
+ * @param {boolean} params.shouldTrigger - Whether the skill should have triggered
+ * @param {string}  params.expectedTools - Comma-separated expected tool names from CSV
+ * @param {Array}   params.toolCalls     - Tool call events extracted from trace
+ * @param {Array}   params.messages      - Message events extracted from trace
+ * @returns {{triggered: boolean, reason: string}}
+ */
+function validateTrigger({ shouldTrigger, expectedTools, toolCalls, messages }) {
+  // Parse expected tools from CSV (may be comma-separated string or empty)
+  const expected = (expectedTools || '')
+    .split(',')
+    .map(t => t.trim().toLowerCase())
+    .filter(Boolean);
+
+  // Classify tool calls
+  const substantiveTools = toolCalls.filter(tc =>
+    !CLARIFICATION_TOOLS.has(tc.tool)
+  );
+  const toolNames = substantiveTools.map(tc => (tc.tool || '').toLowerCase());
+
+  if (shouldTrigger) {
+    // Strategy 1: expected_tools defined → check intersection
+    if (expected.length > 0) {
+      const matched = expected.filter(et => toolNames.some(tn => tn.includes(et) || et.includes(tn)));
+      if (matched.length > 0) {
+        return { triggered: true, reason: `Expected tools matched: ${matched.join(', ')}` };
+      }
+      // Even if expected tools not matched, check if substantive work was done
+      if (substantiveTools.length > 0) {
+        return {
+          triggered: true,
+          reason: `Expected tools [${expected.join(', ')}] not found, but agent used: ${toolNames.join(', ')}`
+        };
+      }
+      return {
+        triggered: false,
+        reason: `Expected tools [${expected.join(', ')}] were not called. Agent tools: ${toolCalls.map(tc => tc.tool).join(', ') || 'none'}`
+      };
+    }
+
+    // Strategy 2: no expected_tools → heuristic
+    if (substantiveTools.length > 0) {
+      return { triggered: true, reason: `Agent made ${substantiveTools.length} substantive tool call(s)` };
+    }
+
+    // Check for substantive message content (not just questions)
+    const substantiveMessages = messages.filter(m => {
+      const content = (m.content || '').trim();
+      // Must be meaningful length and not just a question/clarification
+      return content.length > 80 && !content.endsWith('?');
+    });
+    if (substantiveMessages.length > 0) {
+      return { triggered: true, reason: 'Agent produced substantive response content' };
+    }
+
+    return {
+      triggered: false,
+      reason: 'No substantive tool calls or meaningful content produced (only clarification/questions)'
+    };
+  } else {
+    // should_trigger = false → skill should NOT have been triggered
+    if (substantiveTools.length > 0) {
+      return {
+        triggered: true, // bad — it triggered when it shouldn't have
+        reason: `Skill unexpectedly triggered — agent used: ${toolNames.join(', ')}`
+      };
+    }
+    return { triggered: false, reason: 'Skill correctly not triggered' };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Deterministic checks
 // ---------------------------------------------------------------------------
 
@@ -191,11 +288,30 @@ async function runEvaluation(skillName, options = {}) {
       .filter(e => e.type === 'error' || e.type === 'turn.failed')
       .map(e => ({ type: e.type, message: e.message || e.error || '', timestamp: e.timestamp }));
 
+    // Validate trigger behavior
+    const shouldTrigger = prompt.should_trigger === 'true';
+    const triggerResult = validateTrigger({
+      shouldTrigger,
+      expectedTools: prompt.expected_tools,
+      toolCalls: toolCallEvents,
+      messages
+    });
+
+    // Pass/fail logic:
+    //   - No errors in trace
+    //   - All deterministic checks passed (if any)
+    //   - Trigger validation: if should_trigger=true, skill must have triggered;
+    //     if should_trigger=false, skill must NOT have triggered
+    const triggerCorrect = shouldTrigger ? triggerResult.triggered : !triggerResult.triggered;
+    const passed = !hasErrors
+      && checkResults.every(c => c.passed)
+      && triggerCorrect;
+
     results.push({
       testId,
       prompt: prompt.prompt,
       category: prompt.category || null,
-      shouldTrigger: prompt.should_trigger === 'true',
+      shouldTrigger,
       tracePath: artifactPath,
       traceReport,
       traceDetails: {
@@ -204,8 +320,9 @@ async function runEvaluation(skillName, options = {}) {
         errors: errorEvents,
         eventCount: events.length
       },
+      triggerResult,
       checkResults,
-      passed: !hasErrors && checkResults.every(c => c.passed),
+      passed,
       exitCode: runResult.exitCode
     });
   }
@@ -228,6 +345,7 @@ module.exports = {
   loadRubric,
   runAgent,
   runDeterministicChecks,
+  validateTrigger,
   runEvaluation,
   loadConfig,  // re-export from paths.js for backward compatibility
   parseCSVLine

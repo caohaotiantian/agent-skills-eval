@@ -142,9 +142,10 @@ describe('Prompt Generator', () => {
       const description = 'Run tests';
 
       const v0 = generateTriggerVariation(trigger, description, 0);
-      const v10 = generateTriggerVariation(trigger, description, 10);
+      const v15 = generateTriggerVariation(trigger, description, 15);
 
-      expect(v0).toBe(v10);
+      // With 15 variations, index 15 wraps back to index 0
+      expect(v0).toBe(v15);
     });
   });
 
