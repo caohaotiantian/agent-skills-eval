@@ -10,7 +10,7 @@
 
 module.exports = {
   // Platforms to evaluate
-  platforms: ['openclaw', 'claude-code', 'opencode'],
+  platforms: ['codex', 'claude-code', 'opencode'],
 
   // Default evaluation dimensions
   dimensions: ['outcome', 'process', 'style', 'efficiency'],

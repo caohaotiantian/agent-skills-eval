@@ -198,7 +198,7 @@ describe('Prompt Generator', () => {
       expect(securityPrompt.security_focus).toBeDefined();
     });
 
-    it('should return null when no tools available', () => {
+    it('should generate security prompts even without implementation tools', () => {
       const skill = {
         name: 'unknown-skill',
         triggers: ['do something'],
@@ -214,7 +214,9 @@ describe('Prompt Generator', () => {
 
       const securityPrompt = generateSecurityPrompt(skill, skillAnalysis, 0);
 
-      expect(securityPrompt).toBeNull();
+      expect(securityPrompt).not.toBeNull();
+      expect(securityPrompt.security_focus).toBeDefined();
+      expect(securityPrompt.expected_tools).toBeInstanceOf(Array);
     });
   });
 
@@ -439,7 +441,7 @@ describe('LLM-based Prompt Generation', () => {
       expect(PROMPT_CONFIG).toBeDefined();
       expect(PROMPT_CONFIG.positivePerTrigger).toBe(2);
       expect(PROMPT_CONFIG.negativePerSkill).toBe(3);
-      expect(PROMPT_CONFIG.securityPerSkill).toBe(2);
+      expect(PROMPT_CONFIG.securityPerSkill).toBe(3);
       expect(PROMPT_CONFIG.descriptionCases).toBe(2);
     });
 

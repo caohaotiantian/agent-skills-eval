@@ -1,112 +1,80 @@
 {
-  "version": "1.0",
+  "version": "2.0",
   "metadata": {
     "name": "Agent Skills Evaluation Suite",
-    "description": "Comprehensive evaluation framework for agent skills",
+    "description": "Evaluation framework aligned with Agent Skills specification and OpenAI eval-skills",
     "author": "OpenClaw Community",
-    "reference": "Inspired by OpenAI Evals"
+    "reference_spec": "https://agentskills.io/specification",
+    "reference_evals": "https://developers.openai.com/blog/eval-skills"
   },
   "evals": [
     {
-      "id": "skill-md-validation",
-      "name": "SKILL.md Metadata Validation",
-      "description": "Validates skill metadata structure",
-      "category": "metadata",
+      "id": "outcome",
+      "name": "Outcome Goals",
+      "description": "Is the skill structurally complete per the Agent Skills specification?",
+      "category": "structure",
       "criteria": [
-        {
-          "id": "has-skill-md",
-          "name": "Has SKILL.md",
-          "description": "Skill must have a SKILL.md file",
-          "weight": 1
-        },
-        {
-          "id": "has-frontmatter",
-          "name": "Has YAML Frontmatter",
-          "description": "SKILL.md should have YAML frontmatter",
-          "weight": 1
-        },
-        {
-          "id": "has-name",
-          "name": "Has Name Field",
-          "description": "Skill must have a name field",
-          "weight": 1
-        },
-        {
-          "id": "has-description",
-          "name": "Has Description",
-          "description": "Skill must have a description",
-          "weight": 1
-        },
-        {
-          "id": "has-location",
-          "name": "Has Location Tag",
-          "description": "Skill should specify its location",
-          "weight": 1
-        },
-        {
-          "id": "has-available-skills",
-          "name": "Has Available Skills Section",
-          "description": "Skill should list available sub-skills",
-          "weight": 1
-        }
+        { "id": "has-skill-md", "name": "Has SKILL.md", "description": "SKILL.md file exists (required)", "weight": 2 },
+        { "id": "has-frontmatter", "name": "Has YAML Frontmatter", "description": "YAML frontmatter with required fields", "weight": 1 },
+        { "id": "has-name", "name": "Has Name Field", "description": "Required name field in frontmatter", "weight": 1 },
+        { "id": "has-description", "name": "Has Description", "description": "Description >10 chars (required)", "weight": 2 },
+        { "id": "name-matches-directory", "name": "Name Matches Directory", "description": "Name must match parent directory (per spec)", "weight": 1 },
+        { "id": "has-body-content", "name": "Has Body Content", "description": "Markdown body with instructions after frontmatter", "weight": 2 },
+        { "id": "skill-md-size", "name": "SKILL.md Size", "description": "Under 500 lines (spec recommendation)", "weight": 1 },
+        { "id": "has-optional-directories", "name": "Has Optional Directories", "description": "scripts/, references/, or assets/ per spec", "weight": 1 }
       ]
     },
     {
-      "id": "skill-trigger-validation",
-      "name": "Trigger Pattern Validation",
-      "description": "Validates skill trigger definitions",
-      "category": "triggers",
+      "id": "process",
+      "name": "Process Goals",
+      "description": "Does the skill provide enough information for agents to invoke it correctly?",
+      "category": "invocation",
       "criteria": [
-        {
-          "id": "has-triggers-section",
-          "name": "Has Triggers Section",
-          "description": "Skill should define triggers",
-          "weight": 1
-        },
-        {
-          "id": "has-valid-patterns",
-          "name": "Valid Regex Patterns",
-          "description": "Trigger patterns should be valid regex",
-          "weight": 2
-        },
-        {
-          "id": "non-empty-triggers",
-          "name": "Non-Empty Trigger List",
-          "description": "Trigger list should not be empty",
-          "weight": 1
-        }
+        { "id": "name-spec-compliant", "name": "Name Spec Compliant", "description": "Name follows Agent Skills spec (kebab-case, 1-64 chars)", "weight": 2 },
+        { "id": "description-complete", "name": "Description Complete", "description": "Describes both what the skill does and when to use it", "weight": 3 },
+        { "id": "has-usage-guidance", "name": "Has Usage Guidance", "description": "Body includes when/how to use guidance", "weight": 2 },
+        { "id": "clear-instructions", "name": "Clear Instructions", "description": "Step-by-step instructions, code blocks, or examples", "weight": 3 }
       ]
     },
     {
-      "id": "code-quality",
-      "name": "Code Quality Assessment",
-      "description": "Evaluates code implementation quality",
+      "id": "style",
+      "name": "Style Goals",
+      "description": "Does the skill follow coding conventions and documentation standards?",
       "category": "quality",
       "criteria": [
-        {
-          "id": "has-implementation",
-          "name": "Has Implementation Code",
-          "description": "Skill should have actual code",
-          "weight": 2
-        },
-        {
-          "id": "has-tests",
-          "name": "Has Test Suite",
-          "description": "Skill should have tests",
-          "weight": 2
-        },
-        {
-          "id": "has-readme",
-          "name": "Has Documentation",
-          "description": "Skill should have README",
-          "weight": 1
-        },
-        {
-          "id": "modular-structure",
-          "name": "Modular Structure",
-          "description": "Code should be modular (lib/, commands/, hooks/)",
-          "weight": 1
-        }
+        { "id": "has-documentation", "name": "Has Documentation", "description": "SKILL.md body or references/ directory", "weight": 2 },
+        { "id": "modular-structure", "name": "Modular Structure", "description": "scripts/, references/, assets/, lib/, or src/", "weight": 2 },
+        { "id": "has-tests", "name": "Has Test Suite", "description": "Test files or tests/ directory", "weight": 3 },
+        { "id": "consistent-naming", "name": "Consistent Naming", "description": "Kebab-case convention per spec", "weight": 2 },
+        { "id": "code-comments", "name": "Code Comments", "description": "Adequate comments in code files", "weight": 1 }
+      ]
+    },
+    {
+      "id": "efficiency",
+      "name": "Efficiency Goals",
+      "description": "Did it complete without thrashing or excessive resource usage?",
+      "category": "performance",
+      "criteria": [
+        { "id": "no-dead-code", "name": "No Dead Code", "description": "Reasonable dependency and file count", "weight": 2 },
+        { "id": "async-optimization", "name": "Async Optimization", "description": "Uses async/parallel patterns where appropriate", "weight": 2 },
+        { "id": "caching", "name": "Caching", "description": "Implements caching where appropriate", "weight": 2 },
+        { "id": "efficient-dependencies", "name": "Efficient Dependencies", "description": "Minimal dependencies (<20 prod, <30 dev)", "weight": 2 },
+        { "id": "no-unnecessary-commands", "name": "No Unnecessary Commands", "description": "No unnecessary shell command execution", "weight": 2 }
+      ]
+    },
+    {
+      "id": "security",
+      "name": "Security Assessment",
+      "description": "Evaluates security posture - no hardcoded secrets, safe execution patterns",
+      "category": "security",
+      "criteria": [
+        { "id": "no-hardcoded-secrets", "name": "No Hardcoded Secrets", "description": "No API keys, passwords, tokens in source", "weight": 3 },
+        { "id": "input-sanitization", "name": "Input Sanitization", "description": "Input validation present in code", "weight": 2 },
+        { "id": "safe-shell-commands", "name": "Safe Shell Commands", "description": "No unsafe string interpolation in exec()", "weight": 2 },
+        { "id": "no-eval-usage", "name": "No Eval Usage", "description": "No dangerous eval() or new Function()", "weight": 2 },
+        { "id": "file-permissions", "name": "File Permissions", "description": "No dangerous chmod 777 or chown root", "weight": 1 },
+        { "id": "network-safety", "name": "Network Safety", "description": "Uses HTTPS (not HTTP) for non-localhost", "weight": 1 },
+        { "id": "dependency-security", "name": "Dependency Security", "description": "Has lock file for pinned versions", "weight": 1 }
       ]
     }
   ]

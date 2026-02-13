@@ -91,4 +91,71 @@ describe('Results Aggregator', () => {
     expect(combined.meta.platform).toBe('claude-code');
     expect(combined.meta.generated_by).toBe('agent-skills-eval pipeline');
   });
+
+  it('should pass through securityResult in traceMetrics', () => {
+    const staticEval = {
+      run_id: 'x', created_at: '2026-01-01T00:00:00Z',
+      summary: { stats: {}, scores: { 'sec-skill': { mean_score: 80 } }, aggregate_scores: { mean: 80 } },
+      data: {}
+    };
+    const secResult = { checks: [], vulnerabilities: [], score: 14, maxScore: 16, percentage: 88 };
+    const dynamicResults = [{
+      skillName: 'sec-skill',
+      backend: 'mock',
+      summary: { total: 1, passed: 1, failed: 0 },
+      results: [{
+        testId: 'sec-001',
+        passed: true,
+        category: 'security',
+        securityResult: secResult,
+        traceReport: { commandCount: 1, errorCount: 0, efficiencyScore: 90, thrashing: { isThrashing: false }, tokenUsage: { total: 100 } }
+      }]
+    }];
+    const combined = aggregateResults({ staticEval, dynamicResults });
+    const tm = combined.dynamic_eval.skills[0].traceMetrics[0];
+    expect(tm.securityResult).toEqual(secResult);
+  });
+
+  it('should compute securityAvg in skill comparisons', () => {
+    const staticEval = {
+      run_id: 'x', created_at: '2026-01-01T00:00:00Z',
+      summary: { stats: {}, scores: { 'sec-skill': { mean_score: 80 } }, aggregate_scores: { mean: 80 } },
+      data: {}
+    };
+    const dynamicResults = [{
+      skillName: 'sec-skill',
+      backend: 'mock',
+      summary: { total: 2, passed: 2, failed: 0 },
+      results: [
+        { testId: 's-1', passed: true, category: 'security', securityResult: { checks: [], vulnerabilities: [], score: 16, maxScore: 16, percentage: 100 }, traceReport: { commandCount: 1, errorCount: 0, efficiencyScore: 80, thrashing: { isThrashing: false }, tokenUsage: { total: 50 } } },
+        { testId: 's-2', passed: true, category: 'security', securityResult: { checks: [], vulnerabilities: [], score: 12, maxScore: 16, percentage: 75 }, traceReport: { commandCount: 2, errorCount: 0, efficiencyScore: 90, thrashing: { isThrashing: false }, tokenUsage: { total: 80 } } }
+      ]
+    }];
+    const combined = aggregateResults({ staticEval, dynamicResults });
+    const skill = combined.comparison.rankings[0];
+    // avg of 100 and 75 = 87.5, rounded to 88
+    expect(skill.securityAvg).toBe(88);
+  });
+
+  it('should use 35/35/15/15 composite formula', () => {
+    const staticEval = {
+      run_id: 'x', created_at: '2026-01-01T00:00:00Z',
+      summary: { stats: {}, scores: { 'test': { mean_score: 100 } }, aggregate_scores: { mean: 100 } },
+      data: {}
+    };
+    const dynamicResults = [{
+      skillName: 'test',
+      backend: 'mock',
+      summary: { total: 1, passed: 1, failed: 0 },
+      results: [{
+        testId: 't-1', passed: true, category: 'security',
+        securityResult: { checks: [], vulnerabilities: [], score: 16, maxScore: 16, percentage: 100 },
+        traceReport: { commandCount: 1, errorCount: 0, efficiencyScore: 100, thrashing: { isThrashing: false }, tokenUsage: { total: 0 } }
+      }]
+    }];
+    const combined = aggregateResults({ staticEval, dynamicResults });
+    const skill = combined.comparison.rankings[0];
+    // 35% * 100 + 35% * 100 + 15% * 100 + 15% * 100 = 100
+    expect(skill.compositeScore).toBe(100);
+  });
 });

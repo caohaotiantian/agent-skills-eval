@@ -27,13 +27,15 @@ describe('Skill Discovery', () => {
 });
 
 describe('Benchmarking', () => {
-  test('lists available benchmarks', () => {
+  test('lists available benchmarks aligned with EVAL_REGISTRY dimensions', () => {
     const { listBenchmarks, getBenchmark, BENCHMARKS } = require('../lib/skills/benchmarking');
     
-    expect(Object.keys(BENCHMARKS)).toContain('metadata');
-    expect(Object.keys(BENCHMARKS)).toContain('triggers');
-    expect(Object.keys(BENCHMARKS)).toContain('code-quality');
-    expect(getBenchmark('metadata')).toBeDefined();
+    expect(Object.keys(BENCHMARKS)).toContain('outcome');
+    expect(Object.keys(BENCHMARKS)).toContain('process');
+    expect(Object.keys(BENCHMARKS)).toContain('style');
+    expect(Object.keys(BENCHMARKS)).toContain('efficiency');
+    expect(Object.keys(BENCHMARKS)).toContain('security');
+    expect(getBenchmark('outcome')).toBeDefined();
   });
   
   test('benchmarking module exports are correct', () => {

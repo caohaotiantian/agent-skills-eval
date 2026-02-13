@@ -422,7 +422,7 @@ program
   .command('generate-all')
   .description('Generate test cases for all discovered skills')
   .option('-o, --output <dir>', 'Output directory')
-  .option('-p, --platform <name>', 'Specific platform (openclaw, claude-code, opencode)')
+  .option('-p, --platform <name>', 'Specific platform (codex, claude-code, opencode)')
   .option('--llm', 'Use LLM (OpenAI) for generating test prompts (requires OPENAI_API_KEY)')
   .option('--no-llm', 'Use template-based generation (default behavior)')
   .option('--json', 'Output as JSON')
