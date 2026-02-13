@@ -202,12 +202,30 @@ async function runEvaluation(skillName, options = {}) {
 
     const hasErrors = events.some(e => e.type === 'error' || e.type === 'turn.failed');
 
+    // Extract key trace details for reporting
+    const messages = events
+      .filter(e => e.type === 'message' && e.content)
+      .map(e => ({ content: e.content, timestamp: e.timestamp }));
+    const toolCallEvents = events
+      .filter(e => e.type === 'tool_call')
+      .map(e => ({ tool: e.tool, input: e.input, id: e.id, timestamp: e.timestamp }));
+    const errorEvents = events
+      .filter(e => e.type === 'error' || e.type === 'turn.failed')
+      .map(e => ({ type: e.type, message: e.message || e.error || '', timestamp: e.timestamp }));
+
     results.push({
       testId,
       prompt: prompt.prompt,
+      category: prompt.category || null,
       shouldTrigger: prompt.should_trigger === 'true',
       tracePath: artifactPath,
       traceReport,
+      traceDetails: {
+        messages: messages.slice(0, 10), // cap to prevent huge payloads
+        toolCalls: toolCallEvents.slice(0, 30),
+        errors: errorEvents,
+        eventCount: events.length
+      },
       checkResults,
       passed: !hasErrors && checkResults.every(c => c.passed),
       exitCode: runResult.exitCode

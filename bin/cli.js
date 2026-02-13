@@ -6,6 +6,11 @@ const chalk = require('chalk');
 
 const packageJson = require('../package.json');
 
+// Helper for Commander repeatable options (e.g., --include <glob> --include <glob>)
+function collect(value, previous) {
+  return previous.concat([value]);
+}
+
 const program = new Command();
 
 program
@@ -488,14 +493,18 @@ program
   .command('pipeline')
   .description('Run full evaluation pipeline: discover → eval → generate → run → trace → report')
   .option('-s, --skill <name>', 'Specific skill to evaluate (default: all discovered)')
+  .option('-I, --include <glob>', 'Include skills matching glob pattern (repeatable)', collect, [])
+  .option('-E, --exclude <glob>', 'Exclude skills matching glob pattern (repeatable)', collect, [])
   .option('-p, --platform <name>', 'Platform filter', 'all')
   .option('-b, --backend <name>', 'Agent backend for dynamic execution', 'mock')
   .option('--llm', 'Use LLM for test prompt generation')
   .option('--no-llm', 'Use template-based generation (default)')
   .option('-f, --format <format>', 'Report format (html, markdown, json)', 'html')
   .option('-o, --output <file>', 'Report output path')
+  .option('--output-dir <dir>', 'Output directory for all artifacts', './results')
   .option('--skip-generate', 'Skip test generation (use existing prompts)')
   .option('--skip-dynamic', 'Skip dynamic execution and trace analysis')
+  .option('--resume', 'Resume from last checkpoint')
   .option('-v, --verbose', 'Show verbose output')
   .option('--dry-run', 'Show what would happen without executing')
   .action(async (options) => {
@@ -504,13 +513,17 @@ program
     try {
       const result = await runPipeline({
         skill: options.skill,
+        include: options.include,
+        exclude: options.exclude,
         platform: options.platform,
         backend: options.backend,
         useLLM: options.llm === true,
         format: options.format,
         output: options.output,
+        outputDir: options.outputDir,
         skipGenerate: options.skipGenerate,
         skipDynamic: options.skipDynamic,
+        resume: options.resume,
         verbose: options.verbose,
         dryRun: options.dryRun
       });

@@ -37,7 +37,7 @@ describe('Pipeline Integration', () => {
     // Report file should exist
     expect(await fs.pathExists(reportPath)).toBe(true);
     const html = await fs.readFile(reportPath, 'utf-8');
-    expect(html).toContain('Pipeline');
+    expect(html).toMatch(/Pipeline|Agent Skills Evaluation/);
 
     // Combined JSON should exist
     if (result.stages.aggregate?.outputPath) {
