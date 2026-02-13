@@ -11,7 +11,10 @@ A universal agent skills evaluation tool that strictly follows the [OpenAI eval-
 - [Architecture](#architecture)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
+- [Complete Evaluation Workflow](#complete-evaluation-workflow)
+- [Skill Discovery](#skill-discovery)
 - [Test Generation](#test-generation)
+- [Dynamic Execution & Agent Backends](#dynamic-execution--agent-backends)
 - [Evaluation Dimensions](#evaluation-dimensions)
 - [Command Reference](#command-reference)
 - [Configuration](#configuration)
@@ -24,135 +27,86 @@ A universal agent skills evaluation tool that strictly follows the [OpenAI eval-
 
 ## Features
 
+- **Multi-Platform Skill Discovery**: Automatic discovery of skills across Claude Code, OpenCode, and OpenClaw platforms — including personal skills, project skills, and plugin skills
 - **Static Validation**: YAML frontmatter, naming conventions, directory structure
-- **Dynamic Execution**: Prompt-based testing with trace collection
-- **LLM-Enhanced Test Generation**: Optional OpenAI integration for smarter prompts
-- **Security Assessment**: 8 security dimensions (optional)
-- **Multi-Platform Support**: OpenClaw, Claude Code, OpenCode
+- **5-Dimensional Static Evaluation**: Outcome, Process, Style, Efficiency, and Security goals
+- **Dynamic Execution with Multi-Backend Support**: Run prompts through 5 agent backends (mock, OpenAI-compatible, Codex, Claude Code, OpenCode)
+- **LLM-Enhanced Test Generation**: Template-based or LLM-powered prompt generation, supporting any OpenAI-compatible API (local or remote)
+- **Security Assessment**: 8 security dimensions with vulnerability detection
 - **Report Generation**: JSON, HTML, Markdown formats
-- **CI/CD Integration**: Command-line interface for automation
+- **Trace Analysis**: JSONL trace parsing with efficiency scoring, thrashing detection, and token usage metrics
+- **CI/CD Integration**: Full command-line interface for automation
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                      agent-skills-eval                           │
-├─────────────────────────────────────────────────────────────────┤
-│  CLI Layer (bin/cli.js)                                        │
-│  ├── discover    → Discover skills across platforms             │
-│  ├── validate    → Static structure validation                   │
-│  ├── eval        → Multi-dimensional static evaluation           │
-│  ├── run         → Dynamic execution with trace analysis        │
-│  ├── security    → Security vulnerability assessment             │
-│  ├── security-test → Run security test prompts                   │
-│  ├── report      → Generate evaluation reports                  │
-│  └── trace       → Analyze JSONL trace files                   │
-├─────────────────────────────────────────────────────────────────┤
-│  Static Validation (lib/validation/)                            │
-│  ├── frontmatter.js  → YAML frontmatter parsing & validation    │
-│  ├── naming.js       → Naming conventions (kebab-case)         │
-│  ├── structure.js    → Directory structure validation           │
-│  └── security.js     → Security vulnerability checks            │
-├─────────────────────────────────────────────────────────────────┤
-│  Static Evaluation (lib/skills/evaluating/)                    │
-│  └── index.js        → 5-dimensional evaluation engine         │
-│      ├── Outcome Goals (8 criteria)                              │
-│      ├── Process Goals (4 criteria)                              │
-│      ├── Style Goals (5 criteria)                               │
-│      ├── Efficiency Goals (5 criteria)                           │
-│      └── Security Assessment (7 criteria)                        │
-├─────────────────────────────────────────────────────────────────┤
-│  LLM Integration (lib/skills/generating/)                      │
-│  ├── llm.js           → OpenAI API integration                  │
-│  └── templates.js     → Prompt template engine                 │
-├─────────────────────────────────────────────────────────────────┤
-│  Dynamic Execution (evals/)                                    │
-│  ├── runner.js         → Eval execution engine                 │
-│  ├── security-runner.js → Security test executor               │
-│  └── registry/                                             │
-│      ├── prompts/       → Test prompt CSV files                 │
-│      └── rubrics/      → JSON Schema scoring rubrics           │
-├─────────────────────────────────────────────────────────────────┤
-│  Trace Analysis (lib/tracing/)                                  │
-│  ├── parser.js        → JSONL trace event parser               │
-│  └── analyzer.js       → Trace analysis & metrics               │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Key Components
-
-#### 1. CLI Layer (`bin/cli.js`)
-
-The command-line interface provides all user interactions:
-
-```javascript
-// Example: Running evaluations
-const { Command } = require('commander');
-const program = new Command();
-
-program
-  .command('eval')
-  .description('Run static skill evaluations')
-  .option('-p, --platform <name>', 'Platform to evaluate', 'all')
-  .option('-s, --skill <name>', 'Specific skill to evaluate')
-  .action(async (options) => { /* ... */ });
-```
-
-#### 2. Validation Module (`lib/validation/`)
-
-Comprehensive static validation for skill structure:
-
-```javascript
-const { validateSkill } = require('./lib/validation');
-
-const report = await validateSkill('/path/to/skill');
-// Returns: { valid, errors[], warnings[], checks{} }
-```
-
-#### 3. Evaluation Engine (`lib/skills/evaluating/`)
-
-Multi-dimensional evaluation based on OpenAI eval-skills:
-
-```javascript
-const EVAL_REGISTRY = {
-  'outcome': {
-    id: 'outcome',
-    name: 'Outcome Goals',
-    criteria: [
-      { id: 'has-skill-md', name: 'Has valid SKILL.md', weight: 2 },
-      // ...
-    ]
-  },
-  // ... other dimensions
-};
-```
-
-#### 4. Dynamic Runner (`evals/runner.js`)
-
-Executes prompts and collects traces:
-
-```javascript
-const runner = require('./evals/runner');
-
-const results = await runner.runEvaluation('coding-agent', {
-  verbose: true,
-  outputDir: 'evals/artifacts'
-});
-// Returns: { skillName, summary, results[] }
-```
-
-#### 5. Trace Analyzer (`lib/tracing/`)
-
-Parses and analyzes JSONL trace events:
-
-```javascript
-const { TraceAnalyzer, parser } = require('./lib/tracing');
-
-const events = parser.parseJsonlString(content);
-const report = new TraceAnalyzer().analyze(events).generateReport();
-// Returns: { commandCount, efficiencyScore, thrashing, tokenUsage }
+┌──────────────────────────────────────────────────────────────────────┐
+│                        agent-skills-eval                             │
+├──────────────────────────────────────────────────────────────────────┤
+│  CLI Layer (bin/cli.js)                                              │
+│  ├── discover      → Discover skills across platforms                │
+│  ├── validate      → Static structure validation                     │
+│  ├── eval          → Multi-dimensional static evaluation             │
+│  ├── run           → Dynamic execution with configurable backends    │
+│  ├── generate/gen  → Auto-generate test prompts (template or LLM)   │
+│  ├── generate-all  → Batch generate for all skills                   │
+│  ├── pipeline      → One-command full evaluation lifecycle            │
+│  ├── security      → Security vulnerability assessment               │
+│  ├── security-test → Run security test prompts                       │
+│  ├── report        → Generate evaluation reports                     │
+│  ├── trace         → Analyze JSONL trace files                       │
+│  └── list          → List benchmarks or discovered skills            │
+├──────────────────────────────────────────────────────────────────────┤
+│  Skill Discovery (lib/skills/discovering/)                           │
+│  └── index.js      → Multi-source discovery engine                   │
+│      ├── Personal skills   (~/.claude/skills/)                       │
+│      ├── Project skills    (.claude/skills/)                         │
+│      ├── Plugin skills     (~/.claude/plugins/cache/...)             │
+│      └── installed_plugins.json parsing                              │
+├──────────────────────────────────────────────────────────────────────┤
+│  Static Validation (lib/validation/)                                 │
+│  ├── frontmatter.js  → YAML frontmatter parsing & validation        │
+│  ├── naming.js       → Naming conventions (kebab-case)               │
+│  ├── structure.js    → Directory structure validation                │
+│  └── security.js     → Security vulnerability checks                │
+├──────────────────────────────────────────────────────────────────────┤
+│  Static Evaluation (lib/skills/evaluating/)                          │
+│  └── index.js        → 5-dimensional evaluation engine               │
+│      ├── Outcome Goals (8 criteria)                                  │
+│      ├── Process Goals (4 criteria)                                  │
+│      ├── Style Goals (5 criteria)                                    │
+│      ├── Efficiency Goals (5 criteria)                               │
+│      └── Security Assessment (7 criteria)                            │
+├──────────────────────────────────────────────────────────────────────┤
+│  Test Generation (lib/skills/generating/)                            │
+│  ├── analyzer.js         → Skill analysis & metadata extraction      │
+│  ├── prompt-generator.js → Template + LLM prompt generation          │
+│  └── index.js            → CSV output & batch generation             │
+├──────────────────────────────────────────────────────────────────────┤
+│  Dynamic Execution (evals/)                                          │
+│  ├── runner.js            → Eval execution engine with backend dispatch│
+│  ├── security-runner.js   → Security test executor                   │
+│  ├── backends/                                                       │
+│  │   ├── index.js         → Backend registry                        │
+│  │   ├── mock.js          → Synthetic responses (testing)            │
+│  │   ├── openai.js        → OpenAI-compatible API (local/remote)     │
+│  │   ├── codex.js         → OpenAI Codex CLI                        │
+│  │   ├── claude-code.js   → Claude Code CLI                         │
+│  │   └── opencode.js      → OpenCode CLI                            │
+│  └── registry/                                                       │
+│      ├── prompts/          → Test prompt CSV files                   │
+│      └── rubrics/          → JSON Schema scoring rubrics             │
+├──────────────────────────────────────────────────────────────────────┤
+│  Trace Analysis (lib/tracing/)                                       │
+│  ├── parser.js        → JSONL trace event parser                     │
+│  └── analyzer.js      → Trace analysis & metrics                     │
+├──────────────────────────────────────────────────────────────────────┤
+│  Pipeline Orchestrator (lib/pipeline/)                                │
+│  ├── index.js         → Full lifecycle: discover→eval→gen→run→report │
+│  └── aggregator.js    → Merge static + dynamic + trace results       │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -163,6 +117,9 @@ const report = new TraceAnalyzer().analyze(events).generateReport();
 
 - Node.js >= 18.0.0
 - npm >= 9.0.0
+- (Optional) `claude` CLI for Claude Code backend
+- (Optional) `opencode` CLI for OpenCode backend
+- (Optional) `codex` CLI for Codex backend
 
 ### Setup
 
@@ -191,94 +148,262 @@ agent-skills-eval --help
 
 ## Quick Start
 
-### 1. Discover Installed Skills
+**One command — full pipeline:**
 
 ```bash
-# Discover all skills
+# Run everything: discover → eval → generate → run → trace → report
+agent-skills-eval pipeline -b mock
+
+# Target a specific skill with a real backend
+agent-skills-eval pipeline -s writing-skills -b claude-code -o report.html
+
+# Use LLM for smarter test generation
+agent-skills-eval pipeline -s writing-skills --llm -b openai-compatible
+```
+
+**Or run each step individually:**
+
+```bash
+# 1. Discover skills
+agent-skills-eval discover -p claude-code
+
+# 2. Static evaluation
+agent-skills-eval eval -s writing-skills
+
+# 3. Generate test prompts
+agent-skills-eval gen writing-skills --llm
+
+# 4. Run dynamic evaluation
+agent-skills-eval run writing-skills -b openai-compatible
+
+# 5. Analyze traces
+agent-skills-eval trace evals/artifacts/writing-skills-001.jsonl
+
+# 6. Generate report
+agent-skills-eval report -i results/eval-2026-02-12.json -f html -o report.html
+```
+
+---
+
+## One-Command Pipeline
+
+Run the entire evaluation lifecycle in a single command:
+
+```bash
+# Full pipeline with mock backend (no API needed)
+agent-skills-eval pipeline -b mock
+
+# Pipeline with a specific skill
+agent-skills-eval pipeline -s writing-skills -b mock
+
+# Pipeline with LLM test generation + real backend
+agent-skills-eval pipeline -s writing-skills --llm -b openai-compatible
+
+# Pipeline with Claude Code backend
+agent-skills-eval pipeline -s writing-skills -b claude-code -f html -o report.html
+
+# Dry run — see what would happen
+agent-skills-eval pipeline --dry-run
+
+# Skip test generation (reuse existing prompts)
+agent-skills-eval pipeline -s writing-skills -b mock --skip-generate
+
+# Skip dynamic execution (static eval + report only)
+agent-skills-eval pipeline -s writing-skills --skip-dynamic
+
+# npm shortcuts
+npm run pipeline              # default (mock backend)
+npm run pipeline:mock         # explicit mock
+npm run pipeline:llm          # LLM generation + openai-compatible
+```
+
+The pipeline runs these stages automatically:
+
+```
+discover → eval → generate → run → trace → aggregate → report
+```
+
+**Output:**
+- Combined results: `results/pipeline-YYYY-MM-DD.json`
+- Report: `report-YYYY-MM-DD.html` (or custom path with `-o`)
+
+---
+
+## Complete Evaluation Workflow
+
+A full skill evaluation follows this pipeline:
+
+```
+discover → eval → generate → run → trace → report
+```
+
+### Step 1: Discover Skills
+
+Scan all platforms to find installed skills:
+
+```bash
+# Discover all platforms
 agent-skills-eval discover
 
-# Discover specific platform
-agent-skills-eval discover -p openclaw
+# Claude Code only (personal + project + plugin skills)
+agent-skills-eval discover -p claude-code
 
-# Output as JSON
+# JSON output for scripting
 agent-skills-eval discover --json
 ```
 
-### 2. Validate Skill Structure
+Claude Code skills are discovered from 3 tiers:
+- **Personal**: `~/.claude/skills/<name>/SKILL.md`
+- **Project**: `.claude/skills/<name>/SKILL.md`
+- **Plugin**: `~/.claude/plugins/cache/<marketplace>/<plugin>/<ver>/skills/<name>/SKILL.md`
+
+### Step 2: Static Evaluation (no agent needed)
+
+Run multi-dimensional static analysis on skill structure:
 
 ```bash
-# Validate current directory
-agent-skills-eval validate
+# Evaluate a specific skill
+agent-skills-eval eval -s writing-skills --json
 
-# Validate specific skill
-agent-skills-eval validate ./skills/coding-agent
+# Evaluate all skills on a platform
+agent-skills-eval eval -p claude-code
+```
+
+Results are saved to `results/eval-YYYY-MM-DD.json`.
+
+### Step 3: Generate Test Prompts
+
+Create test cases automatically from skill definitions:
+
+```bash
+# Template-based (fast, no API needed)
+agent-skills-eval gen writing-skills
+
+# LLM-powered (smarter, uses configured API)
+agent-skills-eval gen writing-skills --llm
+
+# Batch generate for all skills
+agent-skills-eval generate-all -p claude-code --llm
+```
+
+Generates 4 categories of test cases: positive, negative, security, and description-based. Output: `evals/registry/prompts/<skill>.csv`
+
+### Step 4: Dynamic Execution
+
+Run generated prompts through an agent backend:
+
+```bash
+# Use your local LLM
+agent-skills-eval run writing-skills -b openai-compatible
+
+# Use Claude Code CLI
+agent-skills-eval run writing-skills -b claude-code
+
+# Use OpenCode CLI
+agent-skills-eval run writing-skills -b opencode
+
+# Use mock mode (test pipeline without real API)
+agent-skills-eval run writing-skills -b mock
 
 # Verbose output
-agent-skills-eval validate ./skills/coding-agent -v
+agent-skills-eval run writing-skills -b openai-compatible -v
 ```
 
-### 3. Run Multi-Dimensional Evaluation
+Traces are saved as JSONL to `evals/artifacts/<skill>-<id>.jsonl`.
+
+### Step 5: Analyze Traces
 
 ```bash
-# Evaluate all skills
-agent-skills-eval eval
-
-# Evaluate specific platform
-agent-skills-eval eval -p openclaw
-
-# Evaluate specific skill
-agent-skills-eval eval -s coding-agent
-
-# Output as JSON
-agent-skills-eval eval -s coding-agent --json
+agent-skills-eval trace evals/artifacts/writing-skills-001.jsonl
+agent-skills-eval trace evals/artifacts/writing-skills-001.jsonl -f json
 ```
 
-### 4. Dynamic Execution with Trace
+### Step 6: Generate Reports
 
 ```bash
-# Run dynamic evaluation
-agent-skills-eval run coding-agent
-
-# Verbose output
-agent-skills-eval run coding-agent --verbose
-
-# Custom output directory
-agent-skills-eval run coding-agent --output ./my-artifacts
+agent-skills-eval report -i results/eval-2026-02-12.json -f html -o report.html
+agent-skills-eval report -i results/eval-2026-02-12.json -f markdown -o report.md
 ```
 
-### 5. Generate Reports
+---
 
-```bash
-# Generate HTML report
-agent-skills-eval report -i results/eval.json -f html -o report.html
+## Skill Discovery
 
-# Generate Markdown report
-agent-skills-eval report -i results/eval.json -f markdown -o report.md
+The discovery engine scans multiple platforms and aggregates all skills:
 
-# Generate JSON report
-agent-skills-eval report -i results/eval.json -f json -o report.json
-```
+| Platform | Sources |
+|----------|---------|
+| **Claude Code** | Personal (`~/.claude/skills/`), Project (`.claude/skills/`), Plugins (`~/.claude/plugins/cache/`) |
+| **OpenCode** | `~/.claude-code/plugins/` |
+| **OpenClaw** | `~/.npm-global/lib/node_modules/openclaw/skills/` |
+
+For Claude Code plugins, the tool reads `~/.claude/plugins/installed_plugins.json` to resolve precise install paths, then falls back to scanning the `cache/` directory.
 
 ---
 
 ## Test Generation
 
-### Auto-Generate Test Cases
+### Template-Based (Default)
 
-Generate test prompts automatically from skill definitions:
+Generates test prompts using built-in templates and synonym variations:
 
 ```bash
-# Using template-based generation (default)
-agent-skills-eval generate coding-agent
+agent-skills-eval gen writing-skills
+```
 
-# Using LLM for smarter prompts (requires OPENAI_API_KEY)
-agent-skills-eval generate coding-agent --llm
+### LLM-Powered
 
-# Generate for all skills
-agent-skills-eval generate-all --llm
+Uses any OpenAI-compatible API to generate smarter, more diverse prompts:
 
-# Control output
-agent-skills-eval generate coding-agent --output ./custom-prompts --samples 10
+```bash
+agent-skills-eval gen writing-skills --llm
+```
+
+Supports local APIs (LM Studio, Ollama, vLLM, etc.) via the `llm.baseURL` config or `OPENAI_BASE_URL` env var. When the LLM fails for a category, automatically falls back to template-based generation (configurable via `generation.templateFallback`).
+
+### Test Categories
+
+| Category | Description |
+|----------|-------------|
+| **positive** | Prompts that should trigger the skill |
+| **negative** | Edge cases / ambiguous requests that should NOT trigger |
+| **security** | Command injection, path traversal, privilege escalation tests |
+| **description** | Natural language requests derived from skill description |
+
+---
+
+## Dynamic Execution & Agent Backends
+
+The `run` command executes test prompts through configurable agent backends and collects JSONL traces.
+
+### Available Backends
+
+| Backend | Command | Description |
+|---------|---------|-------------|
+| `mock` | (synthetic) | Returns fake trace events for pipeline testing |
+| `openai-compatible` | OpenAI API call | Any OpenAI-compatible endpoint (LM Studio, Ollama, vLLM, OpenRouter, etc.) |
+| `codex` | `codex exec --json --full-auto` | OpenAI Codex CLI agent |
+| `claude-code` | `claude -p --output-format stream-json` | Claude Code CLI agent |
+| `opencode` | `opencode run --format json` | OpenCode CLI agent |
+
+### Backend Selection Priority
+
+1. CLI flag: `-b, --backend <name>`
+2. Config file: `runner.backend`
+3. Environment: `MOCK_EVAL=true` selects `mock`
+4. Default: `openai-compatible`
+
+### Canonical Trace Format
+
+All backends normalize their output to a unified JSONL format:
+
+```jsonl
+{"type":"thread.started","thread_id":"...","timestamp":"..."}
+{"type":"turn.started","timestamp":"..."}
+{"type":"tool_call","tool":"bash","input":{"command":"..."},"timestamp":"..."}
+{"type":"tool_result","status":"success","timestamp":"..."}
+{"type":"message","content":"...","timestamp":"..."}
+{"type":"turn.completed","timestamp":"..."}
 ```
 
 ---
@@ -337,8 +462,6 @@ Measures resource usage optimization:
 
 ### 5. Security Assessment (7 criteria) - Optional
 
-Measures security posture (requires `--security` flag):
-
 | Criterion | Weight | Description |
 |-----------|--------|-------------|
 | no-hardcoded-secrets | 3 | No hardcoded API keys/secrets |
@@ -362,6 +485,27 @@ Measures security posture (requires `--security` flag):
 
 ### Commands
 
+#### pipeline
+
+Run the full evaluation lifecycle in one command.
+
+```bash
+agent-skills-eval pipeline [options]
+
+Options:
+  -s, --skill <name>     Specific skill to evaluate (default: all)
+  -p, --platform <name>  Platform filter (default: all)
+  -b, --backend <name>   Agent backend (default: mock)
+  --llm                  Use LLM for test prompt generation
+  --no-llm               Use template-based generation (default)
+  -f, --format <format>  Report format: html, markdown, json (default: html)
+  -o, --output <file>    Report output path
+  --skip-generate        Skip test generation (use existing prompts)
+  --skip-dynamic         Skip dynamic execution and trace analysis
+  -v, --verbose          Show verbose output
+  --dry-run              Preview without executing
+```
+
 #### discover
 
 Discover installed skills across platforms.
@@ -371,7 +515,7 @@ agent-skills-eval discover [options]
 
 Options:
   -p, --platform <name>  Specific platform (default: all)
-  --json                  Output as JSON
+  --json                 Output as JSON
 ```
 
 #### validate
@@ -382,10 +526,10 @@ Validate skill structure and frontmatter.
 agent-skills-eval validate [skill] [options]
 
 Arguments:
-  skill                   Skill path or name (default: .)
+  skill                  Skill path or name (default: .)
 
 Options:
-  -v, --verbose           Show detailed output
+  -v, --verbose          Show detailed output
 ```
 
 #### eval
@@ -397,24 +541,62 @@ agent-skills-eval eval [options]
 
 Options:
   -p, --platform <name>  Platform to evaluate (default: all)
-  -s, --skill <name>      Specific skill to evaluate
-  -b, --benchmark <name>  Benchmark to run
-  --json                  Output as JSON
+  -s, --skill <name>     Specific skill to evaluate
+  -b, --benchmark <name> Benchmark to run
+  --json                 Output as JSON
 ```
 
 #### run
 
-Run dynamic skill evaluations with trace collection.
+Run dynamic skill evaluations with configurable agent backends.
 
 ```bash
 agent-skills-eval run <skill> [options]
 
 Arguments:
-  skill                   Skill name to evaluate
+  skill                  Skill name to evaluate
 
 Options:
   -v, --verbose          Show verbose output
+  -b, --backend <name>   Agent backend (mock, openai-compatible, codex, claude-code, opencode)
   --output <dir>         Output directory for traces (default: evals/artifacts)
+```
+
+#### generate / gen
+
+Auto-generate test prompts from skill definitions.
+
+```bash
+agent-skills-eval generate <skill> [options]
+
+Arguments:
+  skill                  Skill name or path
+
+Options:
+  --llm                  Use LLM for smarter prompt generation
+  --no-llm               Use template-based generation (default)
+  -o, --output <dir>     Output directory for prompts
+  -s, --samples <number> Number of test samples
+  -p, --positive <n>     Positive cases per trigger
+  -n, --negative <n>     Negative cases per skill
+  -e, --security <n>     Security cases per skill
+  -d, --description <n>  Description cases per skill
+  --json                 Output as JSON
+```
+
+#### generate-all
+
+Generate test prompts for all discovered skills.
+
+```bash
+agent-skills-eval generate-all [options]
+
+Options:
+  --llm                  Use LLM for generation
+  --no-llm               Use template-based generation (default)
+  -o, --output <dir>     Output directory
+  -p, --platform <name>  Specific platform
+  --json                 Output as JSON
 ```
 
 #### security
@@ -425,11 +607,11 @@ Run comprehensive security assessment.
 agent-skills-eval security [skill] [options]
 
 Arguments:
-  skill                   Skill path (default: .)
+  skill                  Skill path (default: .)
 
 Options:
   -v, --verbose          Show detailed output
-  --json                  Output as JSON
+  --json                 Output as JSON
 ```
 
 #### security-test
@@ -454,7 +636,7 @@ Generate evaluation reports.
 agent-skills-eval report [options]
 
 Options:
-  -i, --input <file>    Input results file
+  -i, --input <file>     Input results file
   -f, --format <format>  Output format (json, html, markdown)
   -o, --output <file>    Output file
 ```
@@ -485,38 +667,6 @@ Options:
   -s, --skills           List discovered skills
 ```
 
-#### generate
-
-Generate test prompts from skill definitions.
-
-```bash
-agent-skills-eval generate <skill> [options]
-
-Arguments:
-  skill                   Skill name to generate tests for
-
-Options:
-  --llm                   Use LLM for smarter prompt generation
-  --no-llm                Use template-based generation (default)
-  -o, --output <dir>      Output directory for prompts
-  --samples <number>      Number of test samples to generate (default: 5)
-  -v, --verbose           Show verbose output
-```
-
-#### generate-all
-
-Generate test prompts for all skills.
-
-```bash
-agent-skills-eval generate-all [options]
-
-Options:
-  --llm                   Use LLM for smarter prompt generation
-  --no-llm                Use template-based generation (default)
-  -o, --output <dir>      Output directory for prompts
-  --samples <number>      Number of test samples per skill (default: 5)
-```
-
 ---
 
 ## Configuration
@@ -527,27 +677,75 @@ Options:
 module.exports = {
   // Platforms to evaluate
   platforms: ['openclaw', 'claude-code', 'opencode'],
-  
+
   // Default evaluation dimensions
   dimensions: ['outcome', 'process', 'style', 'efficiency'],
-  
-  // Enable security assessment
+
+  // Security assessment
   security: {
     enabled: true,
-    checks: ['no-hardcoded-secrets', 'input-sanitization', 'safe-shell-commands']
+    checks: [
+      'no-hardcoded-secrets', 'input-sanitization', 'safe-shell-commands',
+      'no-eval-usage', 'file-permissions', 'network-safety', 'dependency-security'
+    ]
   },
-  
-  // Thresholds
+
+  // Score thresholds
   thresholds: {
-    passing: 70,  // Minimum score for passing (%)
-    warning: 50   // Score for warning status
+    passing: 70,       // Minimum score for passing (%)
+    warning: 50        // Score for warning status
   },
-  
+
   // Output settings
   output: {
     format: 'html',
     directory: './results',
     artifacts: './evals/artifacts'
+  },
+
+  // LLM Configuration — used by both `generate --llm` and `run -b openai-compatible`
+  llm: {
+    enabled: true,
+    provider: 'openai',
+    baseURL: 'http://127.0.0.1:1234/v1',   // OpenAI-compatible API (env: OPENAI_BASE_URL)
+    model: 'openai/gpt-oss-20b',            // Model name (env: OPENAI_MODEL)
+    temperature: 0.8,
+    maxTokens: 2000,
+    timeout: 120000,         // Request timeout (ms)
+    retryAttempts: 3,
+    retryDelay: 1000
+  },
+
+  // Test generation settings
+  generation: {
+    defaultSamples: 5,
+    maxSamples: 20,
+    templateFallback: true   // Fall back to templates when LLM fails
+  },
+
+  // Dynamic runner — configures which agent backend executes eval prompts
+  runner: {
+    backend: 'openai-compatible',   // Default backend
+    timeout: 300000,                // Per-prompt execution timeout (ms)
+    backends: {
+      'mock': {},
+      'openai-compatible': {
+        // Inherits baseURL / model / apiKey from llm section
+        systemPrompt: 'You are an AI coding agent. Execute the user request...'
+      },
+      'codex': {
+        command: 'codex',
+        args: ['exec', '--json', '--full-auto']
+      },
+      'claude-code': {
+        command: 'claude',
+        args: ['-p', '--output-format', 'stream-json', '--verbose']
+      },
+      'opencode': {
+        command: 'opencode',
+        args: ['run', '--format', 'json']
+      }
+    }
   }
 };
 ```
@@ -556,22 +754,14 @@ module.exports = {
 
 | Variable | Description | Default |
 |----------|-------------|---------|
+| `OPENAI_API_KEY` | API key for OpenAI-compatible endpoints | - |
+| `OPENAI_BASE_URL` | Base URL for OpenAI-compatible API | (from config) |
+| `OPENAI_MODEL` | Model name for LLM generation | (from config) |
 | `MOCK_EVAL` | Use mock mode (no API calls) | `false` |
-| `OPENAI_API_KEY` | OpenAI API key for LLM generation | - |
-| `OPENAI_MODEL` | Model for generation | `gpt-4o` |
 | `EVAL_TIMEOUT` | Evaluation timeout (ms) | `300000` |
 | `EVAL_OUTPUT_DIR` | Default output directory | `./results` |
 
-### LLM Configuration
-
-Set environment variables for LLM features:
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `OPENAI_API_KEY` | OpenAI API key for LLM generation | - |
-| `OPENAI_MODEL` | Model for generation | `gpt-4o` |
-
-**Note:** LLM features are optional. Without API key, falls back to template-based generation.
+**Note:** Environment variables take precedence over config file values. LLM features work with any OpenAI-compatible API — no official OpenAI key required if you have a local API (LM Studio, Ollama, vLLM, etc.).
 
 ---
 
@@ -585,7 +775,6 @@ Set environment variables for LLM features:
 // lib/skills/evaluating/index.js
 const EVAL_REGISTRY = {
   // ... existing dimensions
-  
   'custom': {
     id: 'custom',
     name: 'Custom Goals',
@@ -602,72 +791,77 @@ const EVAL_REGISTRY = {
 
 ```javascript
 case 'custom-check-1':
-  // Your validation logic
   result.passed = /* condition */;
   result.score = result.passed ? criterion.weight : 0;
   result.reasoning = /* explanation */;
   break;
 ```
 
-### Adding New Security Checks
+### Adding New Agent Backends
 
-1. **Add pattern to `SECURITY_PATTERNS`**:
+1. **Create backend module** in `evals/backends/`:
 
 ```javascript
-// lib/validation/security.js
+// evals/backends/my-agent.js
+function run(prompt, options = {}) {
+  const { verbose, timeout, config } = options;
+  // Execute the prompt through your agent...
+  // Return canonical JSONL trace events:
+  const events = [
+    { type: 'thread.started', thread_id: '...', timestamp: new Date().toISOString() },
+    { type: 'turn.started', timestamp: new Date().toISOString() },
+    // ... tool_call, tool_result, message events ...
+    { type: 'turn.completed', timestamp: new Date().toISOString() }
+  ];
+  return {
+    stdout: events.map(e => JSON.stringify(e)).join('\n'),
+    stderr: '',
+    exitCode: 0
+  };
+}
+module.exports = { run };
+```
+
+2. **Register in `evals/backends/index.js`**:
+
+```javascript
+const BACKENDS = {
+  // ... existing backends
+  'my-agent': require('./my-agent')
+};
+```
+
+3. **Add config** in `agent-skills-eval.config.js`:
+
+```javascript
+runner: {
+  backends: {
+    'my-agent': { command: 'my-agent', args: ['--json'] }
+  }
+}
+```
+
+### Adding New Security Checks
+
+1. **Add pattern** to `lib/validation/security.js`:
+
+```javascript
 const SECURITY_PATTERNS = {
-  // ... existing patterns
-  
   YOUR_PATTERN: [
     { pattern: /your-pattern/gi, severity: 'high', name: 'Your Check', fix: 'Suggestion' }
   ]
 };
 ```
 
-2. **Add check function**:
-
-```javascript
-function checkYourPattern(content) {
-  const matches = content.match(SECURITY_PATTERNS.YOUR_PATTERN[0].pattern) || [];
-  return {
-    passed: matches.length === 0,
-    score: matches.length === 0 ? 2 : 0,
-    maxScore: 2
-  };
-}
-```
-
 ### Creating Custom Test Prompts
 
-1. **Create CSV file** in `evals/registry/prompts/`:
+Create a CSV file in `evals/registry/prompts/`:
 
 ```csv
-id,should_trigger,prompt,expected_tools
-test-01,true,"Your test prompt","bash"
-test-02,false,"Should not trigger","git"
-```
-
-2. **Create rubric** in `evals/registry/rubrics/`:
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "overall_pass": { "type": "boolean" },
-    "score": { "type": "integer", "minimum": 0, "maximum": 100 },
-    "checks": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "string" },
-          "pass": { "type": "boolean" },
-          "notes": { "type": "string" }
-        }
-      }
-    }
-  }
-}
+id,should_trigger,prompt,expected_tools,category,security_focus
+test-01,true,"Your test prompt","bash",positive,
+test-02,false,"Should not trigger",,negative,
+test-03,true,"Inject $(whoami)","bash",security,command_injection
 ```
 
 ---
@@ -705,7 +899,7 @@ agent-skills-eval security-test security-test
 ```json
 {
   "path": "./skills/coding-agent",
-  "timestamp": "2026-02-11T12:30:00.000Z",
+  "timestamp": "2026-02-12T12:30:00.000Z",
   "valid": true,
   "score": 13,
   "maxScore": 16,
@@ -730,21 +924,11 @@ agent-skills-eval security-test security-test
 ### Development Setup
 
 ```bash
-# Fork and clone the repository
 git clone https://github.com/your-fork/agent-skills-eval.git
 cd agent-skills-eval
-
-# Create feature branch
 git checkout -b feature/your-feature
-
-# Install development dependencies
 npm install
-
-# Run tests
 npm test
-
-# Run linting
-npm run lint
 ```
 
 ### Testing
@@ -780,9 +964,11 @@ MIT License - see [LICENSE](LICENSE) for details.
 - [OpenAI eval-skills Framework](https://developers.openai.com/blog/eval-skills)
 - [Agent Skills Specification](https://agentskills.io/specification)
 - [OpenAI Evaluation Best Practices](https://platform.openai.com/docs/guides/evaluation-best-practices)
+- [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills)
+- [OpenCode CLI Documentation](https://open-code.ai/en/docs/cli)
 
 ---
 
-**Version**: 1.0.0  
-**Last Updated**: 2026-02-11  
+**Version**: 1.1.0
+**Last Updated**: 2026-02-12
 **Maintainer**: OpenClaw Team

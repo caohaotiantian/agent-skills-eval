@@ -89,12 +89,13 @@ program
     }
   });
 
-// Run command (NEW - dynamic execution)
+// Run command (dynamic execution with multi-backend support)
 program
   .command('run')
   .description('Run dynamic skill evaluations with trace analysis')
   .argument('<skill>', 'Skill name to evaluate')
   .option('-v, --verbose', 'Show verbose output')
+  .option('-b, --backend <name>', 'Agent backend (mock, openai-compatible, codex, claude-code, opencode)')
   .option('--output <dir>', 'Output directory for traces', 'evals/artifacts')
   .action(async (skillName, options) => {
     const runner = require('../evals/runner');
@@ -103,7 +104,8 @@ program
       console.log(chalk.blue(`\nRunning dynamic evaluation for: ${skillName}`));
       const results = await runner.runEvaluation(skillName, { 
         verbose: options.verbose,
-        outputDir: options.output
+        outputDir: options.output,
+        backend: options.backend
       });
       
       if (results.error) {
@@ -112,10 +114,17 @@ program
       }
       
       console.log(chalk.green('\n=== Evaluation Summary ==='));
-      console.log(`Skills: ${results.skillName}`);
+      console.log(`Skill: ${results.skillName}`);
+      console.log(`Backend: ${results.backend}`);
       console.log(`Tests: ${results.summary.total}`);
       console.log(chalk.green(`Passed: ${results.summary.passed}`));
       console.log(chalk.red(`Failed: ${results.summary.failed}`));
+      
+      // Show per-test results
+      for (const r of results.results || []) {
+        const icon = r.passed ? chalk.green('✓') : chalk.red('✗');
+        console.log(`  ${icon} ${r.testId}: ${r.prompt?.substring(0, 60)}...`);
+      }
       
     } catch (error) {
       console.error(chalk.red('Error running evaluation:'), error.message);
@@ -470,6 +479,49 @@ program
       }
     } catch (error) {
       console.error(chalk.red('Error generating test cases:'), error.message);
+      process.exit(1);
+    }
+  });
+
+// Pipeline command — one-command full evaluation
+program
+  .command('pipeline')
+  .description('Run full evaluation pipeline: discover → eval → generate → run → trace → report')
+  .option('-s, --skill <name>', 'Specific skill to evaluate (default: all discovered)')
+  .option('-p, --platform <name>', 'Platform filter', 'all')
+  .option('-b, --backend <name>', 'Agent backend for dynamic execution', 'mock')
+  .option('--llm', 'Use LLM for test prompt generation')
+  .option('--no-llm', 'Use template-based generation (default)')
+  .option('-f, --format <format>', 'Report format (html, markdown, json)', 'html')
+  .option('-o, --output <file>', 'Report output path')
+  .option('--skip-generate', 'Skip test generation (use existing prompts)')
+  .option('--skip-dynamic', 'Skip dynamic execution and trace analysis')
+  .option('-v, --verbose', 'Show verbose output')
+  .option('--dry-run', 'Show what would happen without executing')
+  .action(async (options) => {
+    const { runPipeline } = require('../lib/pipeline');
+
+    try {
+      const result = await runPipeline({
+        skill: options.skill,
+        platform: options.platform,
+        backend: options.backend,
+        useLLM: options.llm === true,
+        format: options.format,
+        output: options.output,
+        skipGenerate: options.skipGenerate,
+        skipDynamic: options.skipDynamic,
+        verbose: options.verbose,
+        dryRun: options.dryRun
+      });
+
+      if (result.error) {
+        console.error(chalk.red('Pipeline error:'), result.error);
+        process.exit(1);
+      }
+    } catch (error) {
+      console.error(chalk.red('Pipeline failed:'), error.message);
+      if (options.verbose) console.error(error.stack);
       process.exit(1);
     }
   });

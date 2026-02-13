@@ -10,6 +10,9 @@
     "discover": "node bin/cli.js discover",
     "eval": "node bin/cli.js eval",
     "report": "node bin/cli.js report",
+    "pipeline": "node bin/cli.js pipeline",
+    "pipeline:mock": "node bin/cli.js pipeline -b mock",
+    "pipeline:llm": "node bin/cli.js pipeline --llm -b openai-compatible",
     "test": "jest",
     "test:coverage": "jest --coverage"
   },
