@@ -28,7 +28,7 @@ A universal agent skills evaluation tool that strictly follows the [OpenAI eval-
 
 ## Features
 
-- **Multi-Platform Skill Discovery**: Automatic discovery of skills across Claude Code, OpenCode, and Codex platforms -- including personal skills, project skills, and plugin skills
+- **Multi-Platform Skill Discovery**: Automatic discovery of skills across Claude Code, OpenCode, Codex, and OpenClaw platforms -- including personal skills, project skills, plugin skills, bundled skills, managed skills, and workspace skills
 - **Static Validation**: YAML frontmatter, naming conventions, directory structure
 - **5-Dimensional Static Evaluation**: Outcome, Process, Style, Efficiency, and Security goals
 - **Dynamic Execution with Multi-Backend Support**: Run prompts through 5 agent backends (mock, OpenAI-compatible, Codex, Claude Code, OpenCode)
@@ -394,8 +394,11 @@ The discovery engine scans multiple platforms and aggregates all skills:
 | **Claude Code** | Personal (`~/.claude/skills/`), Project (`.claude/skills/`), Plugins (`~/.claude/plugins/cache/`) |
 | **OpenCode** | Personal (`~/.config/opencode/skills/`), Project (`.opencode/skills/`) |
 | **Codex** | Personal (`~/.codex/skills/`), Project (`.codex/skills/`) |
+| **OpenClaw** | Bundled (`<npm-global>/clawdbot/skills/`, `<npm-global>/clawdbot/extensions/<ext>/skills/`), Managed (`~/.openclaw/skills/`), Workspace (`<workspace>/skills/`) |
 
 For Claude Code plugins, the tool reads `~/.claude/plugins/installed_plugins.json` to resolve precise install paths, then falls back to scanning the `cache/` directory.
+
+For OpenClaw, bundled skills ship inside the `clawdbot` npm package (resolved via `npm root -g`). The workspace path is read from `~/.openclaw/openclaw.json` at `agents.defaults.workspace`, defaulting to `~/.openclaw/workspace`.
 
 ---
 
