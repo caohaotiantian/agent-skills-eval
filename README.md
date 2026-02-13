@@ -41,6 +41,18 @@ A universal agent skills evaluation tool that strictly follows the [OpenAI eval-
 
 ---
 
+## Screenshots
+
+### Report Overview
+
+![Report Overview — summary cards, skill comparison table with composite scoring](images/report-overview.png)
+
+### Skill Detail
+
+![Skill Detail — 5-dimensional static evaluation, security assessment, and dynamic test cases with trace](images/report-detail.png)
+
+---
+
 ## Architecture
 
 ```
@@ -183,7 +195,7 @@ All generated output goes to `output/` (configurable via `config/agent-skills-ev
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/agent-skills-eval.git
+git clone https://github.com/caohaotiantian/agent-skills-eval.git
 cd agent-skills-eval
 
 # Install dependencies
@@ -1119,8 +1131,3 @@ MIT License - see [LICENSE](LICENSE) for details.
 - [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills)
 - [OpenCode CLI Documentation](https://open-code.ai/en/docs/cli)
 
----
-
-**Version**: 1.2.0
-**Last Updated**: 2026-02-13
-**Maintainer**: OpenClaw Team
