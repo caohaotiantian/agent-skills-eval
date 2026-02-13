@@ -122,12 +122,20 @@ async function runAgent(prompt, options = {}) {
 /**
  * Non-actionable tool calls that don't count as "skill triggered".
  * These are clarification/meta tools, not productive actions.
+ *
+ * Notably, `chat_completion` is the synthetic tool_call emitted by the
+ * openai-compatible backend for every LLM API call.  It is the agent's
+ * generic response mechanism — the agent calls it for *every* prompt
+ * regardless of whether a skill is involved — so its presence must NOT
+ * be treated as evidence that a skill was invoked.
  */
 const CLARIFICATION_TOOLS = new Set([
   'AskUserQuestion', 'AskUser', 'askuser',
   'EnterPlanMode', 'ExitPlanMode',
   'Skill', 'ToolSearch',
-  'TodoWrite', 'TaskStop'
+  'TodoWrite', 'TaskStop',
+  // Generic LLM passthrough calls emitted by backends — not skill actions
+  'chat_completion', 'chatCompletion', 'ChatCompletion'
 ]);
 
 /**
