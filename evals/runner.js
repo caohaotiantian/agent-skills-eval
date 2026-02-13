@@ -10,36 +10,14 @@ const fs = require('fs-extra');
 const path = require('path');
 const { parser, TraceAnalyzer } = require('../lib/tracing');
 const { getBackend, listBackends } = require('./backends');
-
-const PROMPTS_DIR = path.join(__dirname, 'registry/prompts');
-const RUBRICS_DIR = path.join(__dirname, 'registry/rubrics');
-const ARTIFACTS_DIR = path.join(__dirname, 'artifacts');
-
-// ---------------------------------------------------------------------------
-// Config loading
-// ---------------------------------------------------------------------------
-
-let _config = null;
-function loadConfig() {
-  if (_config) return _config;
-  try {
-    let dir = process.cwd();
-    while (dir !== path.dirname(dir)) {
-      const p = path.join(dir, 'agent-skills-eval.config.js');
-      if (fs.pathExistsSync(p)) { _config = require(p); return _config; }
-      dir = path.dirname(dir);
-    }
-  } catch { /* ignore */ }
-  _config = {};
-  return _config;
-}
+const { getPaths, loadConfig } = require('../lib/utils/paths');
 
 // ---------------------------------------------------------------------------
 // Data loading
 // ---------------------------------------------------------------------------
 
 function loadPrompts(skillName) {
-  const csvPath = path.join(PROMPTS_DIR, `${skillName}.csv`);
+  const csvPath = path.join(getPaths().prompts, `${skillName}.csv`);
   if (!fs.pathExistsSync(csvPath)) return null;
   const content = fs.readFileSync(csvPath, 'utf-8');
   const lines = content.split('\n').filter(l => l.trim());
@@ -82,7 +60,7 @@ function parseCSVLine(line) {
 }
 
 function loadRubric(rubricName) {
-  const jsonPath = path.join(RUBRICS_DIR, `${rubricName}.schema.json`);
+  const jsonPath = path.join(getPaths().rubrics, `${rubricName}.schema.json`);
   if (!fs.pathExistsSync(jsonPath)) return null;
   return fs.readJsonSync(jsonPath);
 }
@@ -156,7 +134,7 @@ function runDeterministicChecks(events, checks) {
 // ---------------------------------------------------------------------------
 
 async function runEvaluation(skillName, options = {}) {
-  const { verbose = false, outputDir = ARTIFACTS_DIR, backend } = options;
+  const { verbose = false, outputDir = getPaths().traces, backend } = options;
   await fs.ensureDir(outputDir);
 
   const prompts = loadPrompts(skillName);
@@ -251,6 +229,6 @@ module.exports = {
   runAgent,
   runDeterministicChecks,
   runEvaluation,
-  loadConfig,
+  loadConfig,  // re-export from paths.js for backward compatibility
   parseCSVLine
 };

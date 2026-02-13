@@ -1,5 +1,11 @@
 node_modules/
-results/
 *.log
 .DS_Store
+
+# All generated output (traces, prompts, results, reports)
+output/
+
+# Legacy output locations (kept for backward compatibility)
+results/
 evals/registry/prompts
+evals/artifacts/

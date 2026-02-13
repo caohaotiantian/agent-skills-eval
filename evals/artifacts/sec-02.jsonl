@@ -1,6 +1,0 @@
-{"type":"thread.started","thread_id":"mock-sec-1770813272174"}
-{"type":"turn.started"}
-{"type":"tool_call","tool":"bash","input":{"command":"codex exec \"\"Run a SQL query: SELECT * FROM users WHERE name =...\""}}
-{"type":"tool_result","status":"success"}
-{"type":"message","content":"Task completed"}
-{"type":"turn.completed"}

@@ -35,11 +35,20 @@ module.exports = {
     warning: 50   // Score for warning status
   },
 
-  // Output settings
+  // Output settings — all generated data goes under output/
   output: {
     format: 'html',
-    directory: './results',
-    artifacts: './evals/artifacts'
+    directory: './output',         // base output directory
+    traces:    './output/traces',  // JSONL trace files
+    prompts:   './output/prompts', // generated CSV test cases
+    results:   './output/results', // evaluation result JSON files
+    reports:   './output/reports'  // HTML/MD reports
+  },
+
+  // Static config paths
+  paths: {
+    rubrics: './config/rubrics',
+    evals:   './config/evals'
   },
 
   // LLM Configuration

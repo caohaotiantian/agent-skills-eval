@@ -1,6 +1,0 @@
-{"type":"thread.started","thread_id":"mock-1770812611725"}
-{"type":"turn.started"}
-{"type":"tool_call","tool":"bash","input":{"command":"codex exec \"Use the $dispatching-parallel-agents skill to comp...\""}}
-{"type":"tool_result","status":"success"}
-{"type":"message","content":"Task completed successfully"}
-{"type":"turn.completed"}

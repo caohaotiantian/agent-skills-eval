@@ -5,6 +5,7 @@ const path = require('path');
 const chalk = require('chalk');
 
 const packageJson = require('../package.json');
+const { getPaths } = require('../lib/utils/paths');
 
 // Helper for Commander repeatable options (e.g., --include <glob> --include <glob>)
 function collect(value, previous) {
@@ -101,7 +102,7 @@ program
   .argument('<skill>', 'Skill name to evaluate')
   .option('-v, --verbose', 'Show verbose output')
   .option('-b, --backend <name>', 'Agent backend (mock, openai-compatible, codex, claude-code, opencode)')
-  .option('--output <dir>', 'Output directory for traces', 'evals/artifacts')
+  .option('--output <dir>', 'Output directory for traces')
   .action(async (skillName, options) => {
     const runner = require('../evals/runner');
     
@@ -109,7 +110,7 @@ program
       console.log(chalk.blue(`\nRunning dynamic evaluation for: ${skillName}`));
       const results = await runner.runEvaluation(skillName, { 
         verbose: options.verbose,
-        outputDir: options.output,
+        outputDir: options.output || getPaths().traces,
         backend: options.backend
       });
       
@@ -329,7 +330,7 @@ program
   .description('Auto-generate test cases from skill analysis')
   .alias('gen')
   .argument('<skill>', 'Skill name or path')
-  .option('-o, --output <dir>', 'Output directory for generated prompts', './evals/registry/prompts')
+  .option('-o, --output <dir>', 'Output directory for generated prompts')
   .option('-s, --samples <number>', 'Samples per category (overrides defaults)')
   .option('-p, --positive <number>', 'Positive cases per trigger', parseInt)
   .option('-n, --negative <number>', 'Negative cases per skill', parseInt)
@@ -364,8 +365,9 @@ program
     }
 
     try {
-      // Build options object
-      const genOptions = { outputDir: options.output };
+      // Build options object — default to configured prompts dir
+      const resolvedOutput = options.output || getPaths().prompts;
+      const genOptions = { outputDir: resolvedOutput };
       if (options.samples) {
         genOptions.positivePerTrigger = Math.ceil(options.samples / 2);
         genOptions.negativePerSkill = Math.floor(options.samples / 3);
@@ -388,7 +390,7 @@ program
 
       const result = await generateTestCases({
         skillPath,
-        outputDir: options.output,
+        outputDir: resolvedOutput,
         options: genOptions
       });
 
@@ -419,7 +421,7 @@ program
 program
   .command('generate-all')
   .description('Generate test cases for all discovered skills')
-  .option('-o, --output <dir>', 'Output directory', './evals/registry/prompts')
+  .option('-o, --output <dir>', 'Output directory')
   .option('-p, --platform <name>', 'Specific platform (openclaw, claude-code, opencode)')
   .option('--llm', 'Use LLM (OpenAI) for generating test prompts (requires OPENAI_API_KEY)')
   .option('--no-llm', 'Use template-based generation (default behavior)')
@@ -439,8 +441,9 @@ program
 
       console.log(chalk.blue(`\nGenerating test cases for ${skillPaths.length} skills...`));
 
-      // Build options object
-      const genOptions = { outputDir: options.output };
+      // Build options object — default to configured prompts dir
+      const resolvedOutput = options.output || getPaths().prompts;
+      const genOptions = { outputDir: resolvedOutput };
       if (options.llm === true) {
         genOptions.useLLM = true;
       } else if (options.llm === false) {
@@ -448,7 +451,7 @@ program
       }
 
       const results = await generateMultiple(skillPaths, {
-        outputDir: options.output,
+        outputDir: resolvedOutput,
         options: genOptions
       });
 
@@ -501,7 +504,7 @@ program
   .option('--no-llm', 'Use template-based generation (default)')
   .option('-f, --format <format>', 'Report format (html, markdown, json)', 'html')
   .option('-o, --output <file>', 'Report output path')
-  .option('--output-dir <dir>', 'Output directory for all artifacts', './results')
+  .option('--output-dir <dir>', 'Output directory for results')
   .option('--skip-generate', 'Skip test generation (use existing prompts)')
   .option('--skip-dynamic', 'Skip dynamic execution and trace analysis')
   .option('--resume', 'Resume from last checkpoint')

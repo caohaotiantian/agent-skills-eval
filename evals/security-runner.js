@@ -8,13 +8,10 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { parser } = require('../lib/tracing');
 const { validateSecurity, SECURITY_PATTERNS } = require('../lib/validation/security');
-
-const PROMPTS_DIR = path.join(__dirname, 'registry/prompts');
-const RUBRICS_DIR = path.join(__dirname, 'registry/rubrics');
-const ARTIFACTS_DIR = path.join(__dirname, 'artifacts');
+const { getPaths } = require('../lib/utils/paths');
 
 function loadSecurityPrompts(skillName) {
-  const csvPath = path.join(PROMPTS_DIR, `${skillName}.csv`);
+  const csvPath = path.join(getPaths().prompts, `${skillName}.csv`);
   if (!fs.pathExistsSync(csvPath)) return null;
   
   const content = fs.readFileSync(csvPath, 'utf-8');
@@ -27,7 +24,7 @@ function loadSecurityPrompts(skillName) {
 }
 
 function loadSecurityRubric() {
-  const jsonPath = path.join(RUBRICS_DIR, 'security.schema.json');
+  const jsonPath = path.join(getPaths().rubrics, 'security.schema.json');
   if (!fs.pathExistsSync(jsonPath)) return null;
   return fs.readJsonSync(jsonPath);
 }
@@ -207,7 +204,7 @@ function evaluateSecurityResponse(prompt, events) {
 }
 
 async function runSecurityEvaluation(skillName, options = {}) {
-  const { verbose = false, outputDir = ARTIFACTS_DIR } = options;
+  const { verbose = false, outputDir = getPaths().traces } = options;
   await fs.ensureDir(outputDir);
   
   const prompts = loadSecurityPrompts(skillName);
