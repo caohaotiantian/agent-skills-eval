@@ -17,15 +17,25 @@ const { getPaths, loadConfig } = require('../lib/utils/paths');
 // ---------------------------------------------------------------------------
 
 function loadPrompts(skillName) {
-  const csvPath = path.join(getPaths().prompts, `${skillName}.csv`);
+  const basePath = getPaths().prompts;
+
+  // Try JSONL first (new format)
+  const jsonlPath = path.join(basePath, `${skillName}.jsonl`);
+  if (fs.pathExistsSync(jsonlPath)) {
+    const content = fs.readFileSync(jsonlPath, 'utf-8');
+    return content.split('\n').filter(l => l.trim()).map(line => {
+      try { return JSON.parse(line); } catch { return null; }
+    }).filter(Boolean);
+  }
+
+  // Fall back to CSV (legacy format)
+  const csvPath = path.join(basePath, `${skillName}.csv`);
   if (!fs.pathExistsSync(csvPath)) return null;
   const content = fs.readFileSync(csvPath, 'utf-8');
   const lines = content.split('\n').filter(l => l.trim());
   if (lines.length < 2) return null;
-
   const headers = lines[0].split(',').map(h => h.trim());
   return lines.slice(1).map(line => {
-    // Handle quoted CSV fields properly
     const values = parseCSVLine(line);
     return headers.reduce((obj, h, i) => { obj[h] = values[i] || ''; return obj; }, {});
   });
@@ -157,11 +167,11 @@ const CLARIFICATION_TOOLS = new Set([
  * @returns {{triggered: boolean, reason: string}}
  */
 function validateTrigger({ shouldTrigger, expectedTools, toolCalls, messages }) {
-  // Parse expected tools from CSV (may be comma-separated string or empty)
-  const expected = (expectedTools || '')
-    .split(',')
-    .map(t => t.trim().toLowerCase())
-    .filter(Boolean);
+  // Parse expected tools (may be comma-separated string, array, or empty)
+  const expected = (Array.isArray(expectedTools)
+    ? expectedTools
+    : (expectedTools || '').split(',')
+  ).map(t => String(t).trim().toLowerCase()).filter(Boolean);
 
   // Classify tool calls
   const substantiveTools = toolCalls.filter(tc =>

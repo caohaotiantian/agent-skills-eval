@@ -409,7 +409,7 @@ program
         for (const [cat, count] of Object.entries(result.categoryBreakdown || {})) {
           console.log(`  - ${cat}: ${count}`);
         }
-        console.log(chalk.blue(`\nOutput: ${result.csvPath}`));
+        console.log(chalk.blue(`\nOutput: ${result.outputPath}`));
       }
     } catch (error) {
       console.error(chalk.red('Error generating test cases:'), error.message);
@@ -473,7 +473,7 @@ program
             if (result.usingLLM) {
               console.log(`  - Generated using: LLM (OpenAI)`);
             }
-            console.log(`  - Output: ${result.csvPath}`);
+            console.log(`  - Output: ${result.outputPath}`);
             totalSuccess++;
           }
         }

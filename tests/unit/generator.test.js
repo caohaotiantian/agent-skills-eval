@@ -17,7 +17,7 @@ describe('Test Case Generator', () => {
   });
 
   describe('generateTestCases', () => {
-    it('should generate CSV file from skill analysis', async () => {
+    it('should generate JSONL file from skill analysis', async () => {
       const { generateTestCases } = require('../../lib/skills/generating');
       const result = await generateTestCases({
         skillPath: testSkillPath,
@@ -25,16 +25,18 @@ describe('Test Case Generator', () => {
         options: { samples: 5 }
       });
 
-      expect(result).toHaveProperty('csvPath');
+      expect(result).toHaveProperty('outputPath');
+      expect(result).toHaveProperty('csvPath'); // backward compat alias
       expect(result).toHaveProperty('prompts');
       expect(result.prompts.length).toBeGreaterThan(0);
 
-      // Verify CSV exists
-      const csvExists = await fs.pathExists(result.csvPath);
-      expect(csvExists).toBe(true);
+      // Verify JSONL file exists
+      const fileExists = await fs.pathExists(result.outputPath);
+      expect(fileExists).toBe(true);
+      expect(result.outputPath).toMatch(/\.jsonl$/);
     });
 
-    it('should generate valid CSV format', async () => {
+    it('should generate valid JSONL format', async () => {
       const { generateTestCases } = require('../../lib/skills/generating');
       const result = await generateTestCases({
         skillPath: testSkillPath,
@@ -42,14 +44,17 @@ describe('Test Case Generator', () => {
         options: { samples: 3 }
       });
 
-      const csvContent = await fs.readFile(result.csvPath, 'utf-8');
-      const lines = csvContent.trim().split('\n');
+      const content = await fs.readFile(result.outputPath, 'utf-8');
+      const lines = content.trim().split('\n');
 
-      // Header line
-      expect(lines[0]).toBe('id,should_trigger,prompt,expected_tools,category,security_focus');
-
-      // Data lines
-      expect(lines.length).toBeGreaterThan(1);
+      // Each line should be valid JSON
+      expect(lines.length).toBeGreaterThan(0);
+      for (const line of lines) {
+        const parsed = JSON.parse(line);
+        expect(parsed).toHaveProperty('id');
+        expect(parsed).toHaveProperty('should_trigger');
+        expect(parsed).toHaveProperty('prompt');
+      }
     });
 
     it('should include expected properties in prompts', async () => {
