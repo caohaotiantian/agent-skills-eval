@@ -1,0 +1,9 @@
+output/
+tests/
+docs/
+images/
+.git/
+.github/
+.gitignore
+jest.config.js
+*.test.js

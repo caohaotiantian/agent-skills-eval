@@ -16,14 +16,38 @@
     "test": "jest",
     "test:coverage": "jest --coverage"
   },
+  "files": [
+    "bin/",
+    "lib/",
+    "evals/",
+    "config/",
+    "types/",
+    "README.md",
+    "LICENSE"
+  ],
   "keywords": [
     "agent",
     "skills",
     "evaluation",
     "claude-code",
     "opencode",
-    "benchmark"
+    "codex",
+    "openclaw",
+    "benchmark",
+    "eval-skills",
+    "agent-skills"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/caohaotiantian/agent-skills-eval.git"
+  },
+  "homepage": "https://github.com/caohaotiantian/agent-skills-eval#readme",
+  "bugs": {
+    "url": "https://github.com/caohaotiantian/agent-skills-eval/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "author": "",
   "license": "MIT",
   "dependencies": {
