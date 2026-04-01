@@ -51,6 +51,13 @@ module.exports = {
     evals:   './config/evals'
   },
 
+  // LLM-as-Judge grading configuration
+  grading: {
+    enabled: false,     // Enable LLM grading (requires LLM config)
+    dimensions: ['correctness', 'helpfulness', 'adherence'],
+    passingScore: 6     // Minimum overall score (1-10) to pass
+  },
+
   // LLM Configuration
   llm: {
     enabled: true,           // Enable LLM features

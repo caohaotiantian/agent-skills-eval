@@ -266,8 +266,9 @@ async function runEvaluation(skillName, options = {}) {
   const results = [];
   const total = prompts.length;
 
+  const config = loadConfig();
   const backendName = backend
-    || loadConfig().runner?.backend
+    || config.runner?.backend
     || (process.env.MOCK_EVAL === 'true' ? 'mock' : 'openai-compatible');
 
   console.log(`  Backend: ${backendName}`);
@@ -329,6 +330,20 @@ async function runEvaluation(skillName, options = {}) {
       });
     }
 
+    // LLM-as-judge grading (optional)
+    let gradingResult = null;
+    if (config.grading?.enabled) {
+      const { gradeWithLLM } = require('../lib/grading/llm-judge');
+      const agentResponse = messages.map(m => m.content).join('\n');
+      gradingResult = await gradeWithLLM({
+        testPrompt: prompt.prompt,
+        skillDescription: '',
+        agentResponse,
+        toolCalls: toolCallEvents,
+        llmConfig: config.llm || {}
+      });
+    }
+
     // Pass/fail logic:
     //   - No errors in trace
     //   - All deterministic checks passed (if any)
@@ -357,6 +372,7 @@ async function runEvaluation(skillName, options = {}) {
       },
       triggerResult,
       securityResult,
+      gradingResult,
       checkResults,
       passed,
       exitCode: runResult.exitCode
