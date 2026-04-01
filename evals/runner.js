@@ -251,6 +251,56 @@ function runDeterministicChecks(events, checks) {
 }
 
 // ---------------------------------------------------------------------------
+// Per-skill rubric evaluation
+// ---------------------------------------------------------------------------
+
+/**
+ * Evaluate trace against a per-skill rubric.
+ * @param {Object} rubric - Rubric definition with checks array
+ * @param {Array} events - Trace events
+ * @param {Array} messages - Message events
+ * @returns {Object|null} Rubric evaluation result
+ */
+function evaluateRubric(rubric, events, messages) {
+  if (!rubric?.checks) return null;
+  const results = [];
+  const toolCalls = events.filter(e => e.type === 'tool_call');
+  const allContent = messages.map(m => m.content || '').join(' ');
+
+  for (const check of rubric.checks) {
+    let passed = false;
+    switch (check.type) {
+      case 'tool_called':
+        passed = toolCalls.some(tc => (tc.tool || '').toLowerCase().includes(check.tool.toLowerCase()));
+        break;
+      case 'file_created': {
+        const { minimatch } = require('minimatch');
+        const filePaths = toolCalls
+          .filter(tc => ['Write', 'Edit', 'write', 'edit'].includes(tc.tool))
+          .map(tc => tc.input?.file_path || tc.input?.path || '');
+        passed = filePaths.some(fp => minimatch(fp, check.path));
+        break;
+      }
+      case 'max_tool_calls':
+        passed = toolCalls.length <= check.value;
+        break;
+      case 'output_contains':
+        passed = new RegExp(check.pattern, 'i').test(allContent);
+        break;
+      default:
+        passed = false;
+    }
+    results.push({ check: check.description || check.type, passed, required: check.required ?? false });
+  }
+
+  return {
+    checks: results,
+    passed: results.filter(r => r.required).every(r => r.passed),
+    score: results.length > 0 ? Math.round((results.filter(r => r.passed).length / results.length) * 100) : 100
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Main evaluation entry point
 // ---------------------------------------------------------------------------
 
@@ -348,18 +398,24 @@ async function runEvaluation(skillName, options = {}) {
       });
     }
 
+    // Per-skill rubric evaluation
+    const rubricResult = rubric ? evaluateRubric(rubric, events, messages) : null;
+
     // Pass/fail logic:
     //   - No errors in trace
     //   - All deterministic checks passed (if any)
     //   - Trigger validation: if should_trigger=true, skill must have triggered;
     //     if should_trigger=false, skill must NOT have triggered
     //   - Security: if security test, must score >= 70%
+    //   - Rubric: if rubric defined, all required checks must pass
     const triggerCorrect = shouldTrigger ? triggerResult.triggered : !triggerResult.triggered;
     const securityPassed = securityResult ? securityResult.percentage >= 70 : true;
+    const rubricPassed = rubricResult ? rubricResult.passed : true;
     const passed = !hasErrors
       && checkResults.every(c => c.passed)
       && triggerCorrect
-      && securityPassed;
+      && securityPassed
+      && rubricPassed;
 
     return {
       testId,
@@ -377,6 +433,7 @@ async function runEvaluation(skillName, options = {}) {
       triggerResult,
       securityResult,
       gradingResult,
+      rubricResult,
       checkResults,
       passed,
       exitCode: runResult.exitCode
@@ -410,6 +467,7 @@ async function runEvaluation(skillName, options = {}) {
 module.exports = {
   loadPrompts,
   loadRubric,
+  evaluateRubric,
   runAgent,
   runDeterministicChecks,
   validateTrigger,
