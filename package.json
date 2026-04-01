@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Universal agent skills evaluation tool for Claude Code, OpenCode, and other platforms",
   "main": "lib/index.js",
+  "types": "types/index.d.ts",
   "bin": {
     "agent-skills-eval": "./bin/cli.js"
   },
