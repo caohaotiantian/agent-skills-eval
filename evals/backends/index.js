@@ -1,14 +1,17 @@
 /**
  * Backend Registry — maps backend names to their implementation modules.
+ * Uses lazy loading so a missing dependency doesn't crash unrelated backends.
  */
 
-const BACKENDS = {
-  'mock':               require('./mock'),
-  'openai-compatible':  require('./openai'),
-  'codex':              require('./codex'),
-  'claude-code':        require('./claude-code'),
-  'opencode':           require('./opencode')
+const BACKEND_MODULES = {
+  'mock':              './mock',
+  'openai-compatible': './openai',
+  'codex':             './codex',
+  'claude-code':       './claude-code',
+  'opencode':          './opencode'
 };
+
+const _cache = {};
 
 /**
  * Get a backend module by name.
@@ -16,19 +19,25 @@ const BACKENDS = {
  * @returns {Object} Backend module with a `run(prompt, options)` function
  */
 function getBackend(name) {
-  const backend = BACKENDS[name];
-  if (!backend) {
-    const known = Object.keys(BACKENDS).join(', ');
+  if (_cache[name]) return _cache[name];
+  const modulePath = BACKEND_MODULES[name];
+  if (!modulePath) {
+    const known = Object.keys(BACKEND_MODULES).join(', ');
     throw new Error(`Unknown runner backend: "${name}". Available: ${known}`);
   }
-  return backend;
+  try {
+    _cache[name] = require(modulePath);
+    return _cache[name];
+  } catch (err) {
+    throw new Error(`Failed to load backend "${name}": ${err.message}`);
+  }
 }
 
 /**
  * List all available backend names.
  */
 function listBackends() {
-  return Object.keys(BACKENDS);
+  return Object.keys(BACKEND_MODULES);
 }
 
-module.exports = { getBackend, listBackends, BACKENDS };
+module.exports = { getBackend, listBackends };
