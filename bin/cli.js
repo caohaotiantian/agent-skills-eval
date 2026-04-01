@@ -542,6 +542,85 @@ program
     }
   });
 
+// Doctor command
+program
+  .command('doctor')
+  .description('Check system readiness: installed tools, API keys, config validity, output directories')
+  .option('--json', 'Output as JSON')
+  .action(async (options) => {
+    const { checkBackendHealth } = require('../lib/utils/health-check');
+    const { loadConfig, getPaths, ensureOutputDirs } = require('../lib/utils/paths');
+    const { existsSync } = require('fs');
+
+    const results = { backends: {}, config: {}, directories: {}, environment: {} };
+    let allHealthy = true;
+
+    // Check config
+    console.log(chalk.blue('\n=== Configuration ==='));
+    const config = loadConfig();
+    const configExists = Object.keys(config).length > 0;
+    results.config.loaded = configExists;
+    console.log(configExists
+      ? chalk.green('  ✓ Config loaded')
+      : chalk.yellow('  ⚠ No config file found (using defaults)'));
+
+    // Check backends
+    console.log(chalk.blue('\n=== Agent Backends ==='));
+    const runnerCfg = config.runner || {};
+    const backendNames = ['mock', 'openai-compatible', 'codex', 'claude-code', 'opencode'];
+
+    for (const name of backendNames) {
+      const backendConfig = {
+        ...(config.llm || {}),
+        ...((runnerCfg.backends || {})[name] || {})
+      };
+      const health = await checkBackendHealth(name, backendConfig);
+      results.backends[name] = health;
+
+      const icon = health.healthy ? chalk.green('✓') : chalk.red('✗');
+      const extra = health.details.error ? ` (${health.details.error})` : '';
+      console.log(`  ${icon} ${name}${extra}`);
+      if (!health.healthy && name !== 'mock') allHealthy = false;
+    }
+
+    // Check output directories
+    console.log(chalk.blue('\n=== Output Directories ==='));
+    try {
+      await ensureOutputDirs();
+      const paths = getPaths();
+      for (const [key, dir] of Object.entries({ traces: paths.traces, prompts: paths.prompts, results: paths.results, reports: paths.reports })) {
+        results.directories[key] = { path: dir, exists: true };
+        console.log(chalk.green(`  ✓ ${key}: ${dir}`));
+      }
+    } catch (err) {
+      console.log(chalk.red(`  ✗ Failed to create output dirs: ${err.message}`));
+      results.directories.error = err.message;
+      allHealthy = false;
+    }
+
+    // Check environment
+    console.log(chalk.blue('\n=== Environment ==='));
+    results.environment = {
+      OPENAI_API_KEY: !!process.env.OPENAI_API_KEY,
+      OPENAI_BASE_URL: process.env.OPENAI_BASE_URL || '(not set)',
+      OPENAI_MODEL: process.env.OPENAI_MODEL || '(not set)',
+      NODE_VERSION: process.version
+    };
+    console.log(`  Node.js: ${process.version}`);
+    console.log(`  OPENAI_API_KEY: ${results.environment.OPENAI_API_KEY ? chalk.green('set') : chalk.yellow('not set')}`);
+    console.log(`  OPENAI_BASE_URL: ${results.environment.OPENAI_BASE_URL}`);
+    console.log(`  OPENAI_MODEL: ${results.environment.OPENAI_MODEL}`);
+
+    // Summary
+    console.log(allHealthy
+      ? chalk.green('\n✓ System is ready')
+      : chalk.yellow('\n⚠ Some backends are not available (this is OK if you only use mock or openai-compatible)'));
+
+    if (options.json) {
+      console.log(JSON.stringify(results, null, 2));
+    }
+  });
+
 program.parse(process.argv);
 
 if (!process.argv.slice(2).length) {
