@@ -102,16 +102,18 @@ program
   .argument('<skill>', 'Skill name to evaluate')
   .option('-v, --verbose', 'Show verbose output')
   .option('-b, --backend <name>', 'Agent backend (mock, openai-compatible, codex, claude-code, opencode)')
+  .option('-c, --concurrency <number>', 'Max parallel prompt executions', parseInt, 1)
   .option('--output <dir>', 'Output directory for traces')
   .action(async (skillName, options) => {
     const runner = require('../evals/runner');
     
     try {
       console.log(chalk.blue(`\nRunning dynamic evaluation for: ${skillName}`));
-      const results = await runner.runEvaluation(skillName, { 
+      const results = await runner.runEvaluation(skillName, {
         verbose: options.verbose,
         outputDir: options.output || getPaths().traces,
-        backend: options.backend
+        backend: options.backend,
+        concurrency: options.concurrency
       });
       
       if (results.error) {
@@ -505,6 +507,7 @@ program
   .option('-f, --format <format>', 'Report format (html, markdown, json)', 'html')
   .option('-o, --output <file>', 'Report output path')
   .option('--output-dir <dir>', 'Output directory for results')
+  .option('-c, --concurrency <number>', 'Max parallel prompt executions', parseInt, 1)
   .option('--skip-generate', 'Skip test generation (use existing prompts)')
   .option('--skip-dynamic', 'Skip dynamic execution and trace analysis')
   .option('--resume', 'Resume from last checkpoint')
@@ -520,6 +523,7 @@ program
         exclude: options.exclude,
         platform: options.platform,
         backend: options.backend,
+        concurrency: options.concurrency,
         useLLM: options.llm === true,
         format: options.format,
         output: options.output,

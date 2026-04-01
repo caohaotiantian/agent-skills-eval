@@ -11,6 +11,7 @@ const path = require('path');
 const { parser, TraceAnalyzer } = require('../lib/tracing');
 const { getBackend, listBackends } = require('./backends');
 const { getPaths, loadConfig } = require('../lib/utils/paths');
+const { runParallel } = require('./parallel-runner');
 
 // ---------------------------------------------------------------------------
 // Data loading
@@ -254,7 +255,7 @@ function runDeterministicChecks(events, checks) {
 // ---------------------------------------------------------------------------
 
 async function runEvaluation(skillName, options = {}) {
-  const { verbose = false, outputDir = getPaths().traces, backend } = options;
+  const { verbose = false, outputDir = getPaths().traces, backend, concurrency = 1 } = options;
   await fs.ensureDir(outputDir);
 
   const prompts = loadPrompts(skillName);
@@ -263,7 +264,6 @@ async function runEvaluation(skillName, options = {}) {
   }
 
   const rubric = loadRubric(skillName);
-  const results = [];
   const total = prompts.length;
 
   const config = loadConfig();
@@ -272,9 +272,13 @@ async function runEvaluation(skillName, options = {}) {
     || (process.env.MOCK_EVAL === 'true' ? 'mock' : 'openai-compatible');
 
   console.log(`  Backend: ${backendName}`);
-  console.log(`  Prompts: ${total}\n`);
+  console.log(`  Prompts: ${total}`);
+  if (concurrency > 1) {
+    console.log(`  Concurrency: ${concurrency}`);
+  }
+  console.log('');
 
-  for (let i = 0; i < total; i++) {
+  async function processPrompt(i) {
     const prompt = prompts[i];
     const testId = prompt.id || `${skillName}-${String(i + 1).padStart(3, '0')}`;
     const artifactPath = path.join(outputDir, `${testId}.jsonl`);
@@ -357,7 +361,7 @@ async function runEvaluation(skillName, options = {}) {
       && triggerCorrect
       && securityPassed;
 
-    results.push({
+    return {
       testId,
       prompt: prompt.prompt,
       category: prompt.category || null,
@@ -376,7 +380,18 @@ async function runEvaluation(skillName, options = {}) {
       checkResults,
       passed,
       exitCode: runResult.exitCode
-    });
+    };
+  }
+
+  let results;
+  if (concurrency > 1) {
+    const tasks = prompts.map((_, i) => () => processPrompt(i));
+    results = await runParallel(tasks, { concurrency, continueOnError: true });
+  } else {
+    results = [];
+    for (let i = 0; i < total; i++) {
+      results.push(await processPrompt(i));
+    }
   }
 
   return {
