@@ -1,0 +1,75 @@
+{
+  "dangerousCommands": [
+    { "pattern": "\\brm\\s+(-[a-z]*f[a-z]*\\s+)?(-[a-z]*r[a-z]*\\s+)?\\/(?!\\w)", "flags": "i", "name": "rm -rf /", "severity": "critical" },
+    { "pattern": "\\brm\\s+-[a-z]*r[a-z]*f[a-z]*\\s", "flags": "i", "name": "Recursive force delete", "severity": "high" },
+    { "pattern": "\\bchmod\\s+777\\b", "flags": "i", "name": "chmod 777", "severity": "high" },
+    { "pattern": "\\bcurl\\b.*\\|\\s*(?:sh|bash|zsh)\\b", "flags": "i", "name": "curl pipe to shell", "severity": "critical" },
+    { "pattern": "\\bwget\\b.*\\|\\s*(?:sh|bash|zsh)\\b", "flags": "i", "name": "wget pipe to shell", "severity": "critical" },
+    { "pattern": "\\bdd\\s+if=\\/dev", "flags": "i", "name": "dd from device", "severity": "high" },
+    { "pattern": "\\bmkfs\\b", "flags": "i", "name": "Filesystem format", "severity": "critical" },
+    { "pattern": "\\b:(){ :\\|:& };:", "flags": "i", "name": "Fork bomb", "severity": "critical" }
+  ],
+  "commandInjection": [
+    { "pattern": "\\$\\([^)]+\\)", "flags": "", "name": "Command substitution $()" },
+    { "pattern": "`[^`]+`", "flags": "", "name": "Backtick execution" },
+    { "pattern": ";\\s*(?:curl|wget|nc|ncat|bash|sh|python|perl|ruby)\\b", "flags": "", "name": "Chained dangerous command" },
+    { "pattern": "\\|\\|\\s*(?:curl|wget|rm|bash|sh)\\b", "flags": "", "name": "OR-chained dangerous command" },
+    { "pattern": "&&\\s*(?:curl|wget|rm|bash|sh)\\b", "flags": "", "name": "AND-chained dangerous command" }
+  ],
+  "pathTraversal": [
+    { "pattern": "\\.\\.\\/", "flags": "" },
+    { "pattern": "\\.\\.\\\\", "flags": "" },
+    { "pattern": "^\\/etc\\/", "flags": "" },
+    { "pattern": "^\\/root\\/", "flags": "" },
+    { "pattern": "^\\/proc\\/", "flags": "" },
+    { "pattern": "^\\/sys\\/", "flags": "" }
+  ],
+  "sensitiveFiles": [
+    { "pattern": "\\.env\\b", "flags": "", "name": ".env file" },
+    { "pattern": "\\.pem\\b", "flags": "", "name": "PEM key file" },
+    { "pattern": "id_rsa|id_ed25519|id_dsa", "flags": "i", "name": "SSH private key" },
+    { "pattern": "\\.ssh\\/", "flags": "", "name": ".ssh directory" },
+    { "pattern": "\\.aws\\/credentials", "flags": "i", "name": "AWS credentials" },
+    { "pattern": "\\.aws\\/config", "flags": "i", "name": "AWS config" },
+    { "pattern": "\\/etc\\/shadow", "flags": "i", "name": "/etc/shadow" },
+    { "pattern": "\\/etc\\/passwd", "flags": "i", "name": "/etc/passwd" },
+    { "pattern": "credentials\\.json", "flags": "i", "name": "credentials.json" },
+    { "pattern": "\\.kube\\/config", "flags": "i", "name": "Kubernetes config" },
+    { "pattern": "\\.docker\\/config\\.json", "flags": "i", "name": "Docker config" },
+    { "pattern": "\\.netrc", "flags": "i", "name": ".netrc" },
+    { "pattern": "\\.pgpass", "flags": "i", "name": ".pgpass" }
+  ],
+  "secretLeakage": [
+    { "pattern": "(?:api[_-]?key|apikey)\\s*[:=]\\s*['\"][a-zA-Z0-9_-]{20,}['\"]", "flags": "gi", "name": "API key" },
+    { "pattern": "(?:secret|token)\\s*[:=]\\s*['\"][a-zA-Z0-9_-]{20,}['\"]", "flags": "gi", "name": "Secret/Token" },
+    { "pattern": "(?:password|passwd)\\s*[:=]\\s*['\"][^'\"]{4,}['\"]", "flags": "gi", "name": "Password" },
+    { "pattern": "(?:sk|pk)-[a-zA-Z0-9]{20,}", "flags": "g", "name": "Stripe-style key" },
+    { "pattern": "ghp_[a-zA-Z0-9]{36}", "flags": "g", "name": "GitHub PAT" },
+    { "pattern": "(?:AKIA|ASIA)[A-Z0-9]{16}", "flags": "g", "name": "AWS access key" },
+    { "pattern": "-----BEGIN (?:RSA |EC )?PRIVATE KEY-----", "flags": "g", "name": "Private key" }
+  ],
+  "unsafeCodeGeneration": [
+    { "pattern": "\\beval\\s*\\(", "flags": "gi", "name": "eval() usage" },
+    { "pattern": "\\bnew\\s+Function\\s*\\(", "flags": "gi", "name": "new Function()" },
+    { "pattern": "\\.innerHTML\\s*=", "flags": "gi", "name": "innerHTML assignment" },
+    { "pattern": "dangerouslySetInnerHTML", "flags": "gi", "name": "React dangerouslySetInnerHTML" },
+    { "pattern": "document\\.write\\s*\\(", "flags": "gi", "name": "document.write()" },
+    { "pattern": "\\$\\{.*\\}\\s*(?:WHERE|INSERT|UPDATE|DELETE|SELECT)\\b", "flags": "gi", "name": "SQL template injection" },
+    { "pattern": "['\"].*\\+\\s*(?:req|request|params|query|body)\\b.*['\"].*(?:WHERE|INSERT|UPDATE|DELETE|SELECT)", "flags": "gi", "name": "SQL string concatenation" }
+  ],
+  "permissionEscalation": [
+    { "pattern": "\\bsudo\\s+", "flags": "", "name": "sudo usage" },
+    { "pattern": "\\bsu\\s+-", "flags": "", "name": "su - (switch user)" },
+    { "pattern": "\\bchmod\\s+\\+s\\b", "flags": "", "name": "setuid bit" },
+    { "pattern": "\\bchown\\s+root\\b", "flags": "", "name": "chown to root" },
+    { "pattern": "\\bchmod\\s+[4267][0-7]{2}\\b", "flags": "", "name": "Dangerous permission bits" }
+  ],
+  "networkExfiltration": [
+    { "pattern": "\\bcurl\\b.*-[a-zA-Z]*d\\b.*http", "flags": "i", "name": "curl POST data" },
+    { "pattern": "\\bcurl\\b.*--data\\b.*http", "flags": "i", "name": "curl --data" },
+    { "pattern": "\\bwget\\b.*--post", "flags": "i", "name": "wget POST" },
+    { "pattern": "\\bnc\\s+-[a-z]*\\s", "flags": "i", "name": "netcat usage" },
+    { "pattern": "\\bncat\\b", "flags": "i", "name": "ncat usage" },
+    { "pattern": "\\bcurl\\b.*\\bftp:\\/\\/", "flags": "i", "name": "FTP upload" }
+  ]
+}
