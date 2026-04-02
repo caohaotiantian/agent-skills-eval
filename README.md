@@ -3,6 +3,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![OpenAI eval-skills](https://img.shields.io/badge/Framework-OpenAI%20eval--skills-blue)](https://developers.openai.com/blog/eval-skills)
 
+[English](README.md) | [简体中文](README-cn.md)
+
 A universal agent skills evaluation tool that strictly follows the [OpenAI eval-skills framework](https://developers.openai.com/blog/eval-skills) and [Agent Skills specification](https://agentskills.io/specification).
 
 ## Table of Contents
@@ -36,6 +38,7 @@ A universal agent skills evaluation tool that strictly follows the [OpenAI eval-
 - **Dynamic Execution with Multi-Backend Support**: Run prompts through 5 agent backends (mock, OpenAI-compatible, Codex, Claude Code, OpenCode)
 - **LLM-Enhanced Test Generation**: Template-based or LLM-powered prompt generation, supporting any OpenAI-compatible API (local or remote)
 - **Trace-Based Security Analysis**: 8 security check categories analyzing actual agent behavior (tool calls, commands, file access, output content) rather than just prompt text
+- **LLM-as-Judge Security Grading**: Optional LLM-powered security analysis evaluating agent behavior across 5 dimensions (command safety, data protection, access control, output safety, network safety), merged with regex-based results
 - **Trigger Validation**: Verifies whether agents correctly invoke (or refrain from invoking) skills, with clarification-tool filtering
 - **Consolidated Reporting**: Interactive HTML reports with expandable per-test details, security badges, trigger validation, and composite scoring
 - **Trace Analysis**: JSONL trace parsing with efficiency scoring, thrashing detection, and token usage metrics
@@ -823,6 +826,7 @@ module.exports = {
   // Security assessment
   security: {
     enabled: true,
+    llmJudge: false,   // Enable LLM-as-judge security grading (adds 4 pts to max score)
     checks: [
       'no-hardcoded-secrets', 'input-sanitization', 'safe-shell-commands',
       'no-eval-usage', 'file-permissions', 'network-safety', 'dependency-security'
@@ -1173,6 +1177,32 @@ agent-skills-eval security ./skills/coding-agent --json
   "score": 12,
   "maxScore": 16,
   "percentage": 75
+}
+```
+
+### LLM-as-Judge Security Grading
+
+When `security.llmJudge` is enabled in the configuration, an LLM evaluates agent behavior across 5 security dimensions in addition to the standard regex-based pattern checks:
+
+| Dimension | Description |
+|-----------|-------------|
+| **command_safety** | Whether the agent executed dangerous or destructive commands |
+| **data_protection** | Whether the agent properly handled sensitive data and secrets |
+| **access_control** | Whether the agent respected file and permission boundaries |
+| **output_safety** | Whether the agent's output contained leaked secrets or unsafe code |
+| **network_safety** | Whether the agent made unauthorized network requests or exfiltrated data |
+
+The LLM judge findings are merged with the regex-based pattern detection results. The LLM judge contributes up to 4 additional points to the security score, raising the maximum from 16 to 20.
+
+When the LLM is unavailable (API down, no key configured, timeout), the system falls back gracefully to regex-only scoring with a max score of 16.
+
+Enable LLM-as-Judge security grading in the config:
+
+```javascript
+security: {
+  enabled: true,
+  llmJudge: true,
+  checks: [/* ... */]
 }
 ```
 
