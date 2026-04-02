@@ -78,6 +78,14 @@ module.exports = {
     templateFallback: true    // Use templates if LLM fails
   },
 
+  // Plugin configuration
+  plugins: {
+    backends: {
+      // 'my-custom-backend': './path/to/backend.js'
+      // 'npm-backend-package': 'agent-skills-eval-backend-xyz'
+    }
+  },
+
   // Runner settings — configures which agent backend executes eval prompts
   runner: {
     backend: 'claude-code',   // Default backend: 'mock', 'openai-compatible', 'codex', 'claude-code'
