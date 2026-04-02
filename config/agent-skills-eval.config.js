@@ -18,6 +18,7 @@ module.exports = {
   // Enable security assessment
   security: {
     enabled: true,
+    llmJudge: false,    // Enable LLM-as-Judge for semantic security analysis (requires LLM config)
     checks: [
       'no-hardcoded-secrets',
       'input-sanitization',
