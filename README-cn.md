@@ -55,17 +55,9 @@
 
 ---
 
-## 截图
+## 报告截图
 
-### 报告概览
-
-![报告概览——摘要卡片、技能对比表与综合评分](images/report-overview.png)
-
-### 技能详情
-
-![技能详情——五维静态评估、安全评估和带 trace 的动态测试用例](images/report-detail.png)
-
----
+![](./images/report-cn.png)
 
 ## 架构概览
 

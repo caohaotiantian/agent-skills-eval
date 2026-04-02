@@ -55,15 +55,11 @@ A universal agent skills evaluation tool that strictly follows the [OpenAI eval-
 
 ---
 
-## Screenshots
+## Report Screenshots
 
 ### Report Overview
 
-![Report Overview — summary cards, skill comparison table with composite scoring](images/report-overview.png)
-
-### Skill Detail
-
-![Skill Detail — 5-dimensional static evaluation, security assessment, and dynamic test cases with trace](images/report-detail.png)
+![](./images/report-en.png)
 
 ---
 
