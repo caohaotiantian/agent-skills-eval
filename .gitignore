@@ -5,6 +5,9 @@ node_modules/
 # All generated output (traces, prompts, results, reports)
 output/
 
+# Superpowers docs (plans, specs)
+docs/
+
 # Legacy output locations (kept for backward compatibility)
 results/
 evals/registry/prompts
