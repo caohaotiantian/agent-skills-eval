@@ -509,6 +509,7 @@ program
   .option('--output-dir <dir>', 'Output directory for results')
   .option('-c, --concurrency <number>', 'Max parallel prompt executions', parseInt, 1)
   .option('--skip-generate', 'Skip test generation (use existing prompts)')
+  .option('--backends <names>', 'Comma-separated backends for comparative evaluation')
   .option('--skip-dynamic', 'Skip dynamic execution and trace analysis')
   .option('--resume', 'Resume from last checkpoint')
   .option('-v, --verbose', 'Show verbose output')
@@ -517,12 +518,17 @@ program
     const { runPipeline } = require('../lib/pipeline');
 
     try {
+      const backends = options.backends
+        ? options.backends.split(',').map(b => b.trim())
+        : null;
+
       const result = await runPipeline({
         skill: options.skill,
         include: options.include,
         exclude: options.exclude,
         platform: options.platform,
         backend: options.backend,
+        backends,
         concurrency: options.concurrency,
         useLLM: options.llm === true,
         format: options.format,
