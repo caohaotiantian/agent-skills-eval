@@ -617,16 +617,20 @@ agent-skills-eval pipeline [options]
 
 Options:
   -s, --skill <name>     指定要评估的技能（默认：全部）
+  -I, --include <glob>   包含匹配 glob 模式的技能（可重复使用）
+  -E, --exclude <glob>   排除匹配 glob 模式的技能（可重复使用）
   -p, --platform <name>  平台过滤（默认：全部）
   -b, --backend <name>   智能体后端（默认：mock）
   --backends <list>      逗号分隔的后端列表，用于对比评估
-  --concurrency <n>      并行运行的提示词数量（默认：1）
+  -c, --concurrency <n>  并行运行的提示词数量（默认：1）
   --llm                  使用 LLM 生成测试提示词
   --no-llm               使用基于模板的生成（默认）
   -f, --format <format>  报告格式：html、markdown、json（默认：html）
   -o, --output <file>    报告输出路径
+  --output-dir <dir>     结果输出目录
   --skip-generate        跳过测试生成（使用已有提示词）
   --skip-dynamic         跳过动态执行和 trace 分析
+  --resume               从上次检查点恢复
   -v, --verbose          显示详细输出
   --dry-run              预览但不执行
 ```
@@ -684,7 +688,7 @@ Arguments:
 Options:
   -v, --verbose          显示详细输出
   -b, --backend <name>   智能体后端（mock、openai-compatible、codex、claude-code、opencode）
-  --concurrency <n>      并行运行的提示词数量（默认：1）
+  -c, --concurrency <n>  并行运行的提示词数量（默认：1）
   --output <dir>         trace 输出目录（默认：evals/artifacts）
 ```
 
@@ -798,7 +802,10 @@ Options:
 检查环境健康状态：验证配置、后端可用性、输出目录和环境变量。
 
 ```bash
-agent-skills-eval doctor
+agent-skills-eval doctor [options]
+
+Options:
+  --json                 以 JSON 格式输出
 ```
 
 ---
