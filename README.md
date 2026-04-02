@@ -18,9 +18,11 @@ A universal agent skills evaluation tool that strictly follows the [OpenAI eval-
 - [Dynamic Execution & Agent Backends](#dynamic-execution--agent-backends)
 - [Evaluation Dimensions](#evaluation-dimensions)
 - [Security Assessment](#security-assessment)
+- [LLM-as-Judge Grading](#llm-as-judge-grading)
 - [Command Reference](#command-reference)
 - [Configuration](#configuration)
 - [Extending the Framework](#extending-the-framework)
+- [CI/CD Integration](#cicd-integration)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -37,7 +39,16 @@ A universal agent skills evaluation tool that strictly follows the [OpenAI eval-
 - **Trigger Validation**: Verifies whether agents correctly invoke (or refrain from invoking) skills, with clarification-tool filtering
 - **Consolidated Reporting**: Interactive HTML reports with expandable per-test details, security badges, trigger validation, and composite scoring
 - **Trace Analysis**: JSONL trace parsing with efficiency scoring, thrashing detection, and token usage metrics
-- **CI/CD Integration**: Full command-line interface for automation
+- **Doctor Command**: Pre-flight `doctor` command validates config, backends, directories, and environment
+- **Parallel Prompt Execution**: `--concurrency` flag for running multiple prompts simultaneously
+- **LLM-as-Judge Grading**: Automated grading of agent responses on correctness, helpfulness, and adherence
+- **JSONL Test Cases**: Test cases stored in JSONL format (with CSV backward compatibility)
+- **Comparative Multi-Backend Evaluation**: `--backends` flag to run the same tests across multiple backends side-by-side
+- **TypeScript Type Definitions**: 30+ interfaces in `types/index.d.ts` for editor support and downstream consumers
+- **Plugin Architecture**: Load custom backends from npm packages or local file paths
+- **Incremental Caching**: Content-hash based caching skips unchanged skills for faster re-evaluation
+- **GitHub Action**: Ready-made workflow for CI/CD evaluation pipelines
+- **CI/CD Integration**: Full command-line interface for automation, npm-publishable (`npx agent-skills-eval`)
 
 ---
 
@@ -71,7 +82,8 @@ A universal agent skills evaluation tool that strictly follows the [OpenAI eval-
 │  ├── security-test → Run security test prompts                       │
 │  ├── report        → Generate evaluation reports                     │
 │  ├── trace         → Analyze JSONL trace files                       │
-│  └── list          → List benchmarks or discovered skills            │
+│  ├── list          → List benchmarks or discovered skills            │
+│  └── doctor        → Environment health check (config, backends)     │
 ├──────────────────────────────────────────────────────────────────────┤
 │  Skill Discovery (lib/skills/discovering/)                           │
 │  └── index.js      → Multi-source discovery engine                   │
@@ -101,9 +113,10 @@ A universal agent skills evaluation tool that strictly follows the [OpenAI eval-
 ├──────────────────────────────────────────────────────────────────────┤
 │  Dynamic Execution (evals/)                                          │
 │  ├── runner.js            → Eval execution + trigger validation      │
+│  ├── parallel-runner.js   → Concurrent prompt execution              │
 │  ├── security-runner.js   → Trace-based security analysis            │
 │  ├── backends/                                                       │
-│  │   ├── index.js         → Backend registry                        │
+│  │   ├── index.js         → Backend registry (incl. plugin loader)  │
 │  │   ├── mock.js          → Synthetic responses (testing)            │
 │  │   ├── openai.js        → OpenAI-compatible API (local/remote)     │
 │  │   ├── codex.js         → OpenAI Codex CLI                        │
@@ -119,16 +132,29 @@ A universal agent skills evaluation tool that strictly follows the [OpenAI eval-
 │  ├── aggregator.js    → Merge static + dynamic + security results    │
 │  └── checkpoint.js    → Pipeline state for resume functionality      │
 ├──────────────────────────────────────────────────────────────────────┤
+│  Grading (lib/grading/)                                              │
+│  └── llm-judge.js     → LLM-as-judge response grading               │
+├──────────────────────────────────────────────────────────────────────┤
 │  Utilities (lib/utils/)                                              │
-│  └── paths.js         → Centralized path resolution & config loading │
+│  ├── paths.js         → Centralized path resolution & config loading │
+│  ├── frontmatter.js   → Shared YAML frontmatter parsing             │
+│  ├── health-check.js  → Backend health validation (pre-flight)       │
+│  └── content-hash.js  → Content hashing for incremental caching      │
 ├──────────────────────────────────────────────────────────────────────┤
 │  Configuration (config/)                                             │
 │  ├── agent-skills-eval.config.js → Project-level configuration       │
 │  ├── rubrics/                    → JSON Schema scoring rubrics       │
+│  ├── security/                   → Externalized security patterns    │
+│  │   ├── static-patterns.json   → Static analysis patterns           │
+│  │   └── trace-patterns.json    → Trace-based detection patterns     │
 │  └── evals/                      → Benchmark definitions             │
 ├──────────────────────────────────────────────────────────────────────┤
 │  Reporting (lib/skills/reporting/)                                   │
-│  └── index.js         → HTML/Markdown/JSON report generation         │
+│  ├── index.js         → HTML/Markdown/JSON report generation         │
+│  ├── templates/       → EJS templates for HTML reports               │
+│  │   ├── report.ejs   → Main report template                        │
+│  │   └── styles.css   → Report stylesheet                           │
+│  └── Features:                                                       │
 │      ├── Consolidated report with composite scoring                  │
 │      ├── Security badges & expandable vulnerability panels           │
 │      ├── Trigger validation results                                  │
@@ -152,22 +178,30 @@ agent-skills-eval/
 │   │   ├── discovering/        # Multi-platform skill discovery
 │   │   ├── evaluating/         # 5-dimensional static evaluation
 │   │   ├── generating/         # Test prompt generation (template + LLM)
-│   │   └── reporting/          # Report generation (HTML, Markdown, JSON)
+│   │   └── reporting/          # Report generation (EJS templates, HTML, Markdown, JSON)
+│   ├── grading/                # LLM-as-judge response grading
+│   │   └── llm-judge.js
 │   ├── validation/             # Static validators (frontmatter, naming, security)
 │   ├── tracing/                # JSONL trace parser + analyzer + security patterns
 │   ├── pipeline/               # Pipeline orchestrator, aggregator, checkpoint
-│   └── utils/                  # Centralized path resolution & config loading
+│   └── utils/                  # Path resolution, frontmatter, health-check, content-hash
 ├── evals/                      # Dynamic execution layer
 │   ├── runner.js               # Main eval runner with trigger validation
+│   ├── parallel-runner.js      # Concurrent prompt execution (--concurrency)
 │   ├── security-runner.js      # Trace-based security evaluator
-│   └── backends/               # Agent backend implementations
+│   └── backends/               # Agent backend implementations (incl. plugin loader)
 ├── config/                     # Static configuration (checked into VCS)
 │   ├── agent-skills-eval.config.js
-│   ├── rubrics/                # JSON Schema scoring rubrics (security.schema.json)
+│   ├── rubrics/                # JSON Schema scoring rubrics per skill
+│   ├── security/               # Externalized security patterns (static + trace)
 │   └── evals/                  # Benchmark definitions (benchmarks.json)
+├── types/                      # TypeScript type definitions (30+ interfaces)
+│   └── index.d.ts
+├── .github/workflows/          # CI/CD
+│   └── eval.yml                # GitHub Action for evaluation pipelines
 ├── output/                     # All generated data (gitignored)
 │   ├── traces/                 # JSONL trace files
-│   ├── prompts/                # Generated CSV test cases
+│   ├── prompts/                # Generated JSONL test cases
 │   ├── results/                # Evaluation result JSON files
 │   └── reports/                # HTML/MD reports
 └── tests/                      # Test suite
@@ -191,7 +225,17 @@ All generated output goes to `output/` (configurable via `config/agent-skills-ev
 - (Optional) `opencode` CLI for OpenCode backend
 - (Optional) `codex` CLI for Codex backend
 
-### Setup
+### Quick Install (npx)
+
+```bash
+# Run directly without installing
+npx agent-skills-eval --help
+
+# Run a pipeline
+npx agent-skills-eval pipeline -b mock
+```
+
+### Install from Source
 
 ```bash
 # Clone the repository
@@ -212,6 +256,9 @@ npm link
 
 ```bash
 agent-skills-eval --help
+
+# Check environment, config, backends, and directories
+agent-skills-eval doctor
 ```
 
 ---
@@ -280,6 +327,12 @@ agent-skills-eval pipeline -s writing-skills -b mock --skip-generate
 
 # Skip dynamic execution (static eval + report only)
 agent-skills-eval pipeline -s writing-skills --skip-dynamic
+
+# Comparative evaluation across multiple backends
+agent-skills-eval pipeline -s writing-skills --backends mock,openai-compatible,claude-code
+
+# Parallel prompt execution (4 concurrent)
+agent-skills-eval pipeline -s writing-skills -b mock --concurrency 4
 
 # npm shortcuts
 npm run pipeline              # default (mock backend)
@@ -356,7 +409,7 @@ agent-skills-eval gen writing-skills --llm
 agent-skills-eval generate-all -p claude-code --llm
 ```
 
-Generates 4 categories of test cases: positive, negative, security, and description-based. Output: `output/prompts/<skill>.csv`
+Generates 4 categories of test cases: positive, negative, security, and description-based. Output: `output/prompts/<skill>.jsonl` (CSV also supported for backward compatibility)
 
 ### Step 4: Dynamic Execution
 
@@ -571,6 +624,8 @@ Options:
   -s, --skill <name>     Specific skill to evaluate (default: all)
   -p, --platform <name>  Platform filter (default: all)
   -b, --backend <name>   Agent backend (default: mock)
+  --backends <list>      Comma-separated backends for comparative evaluation
+  --concurrency <n>      Number of prompts to run in parallel (default: 1)
   --llm                  Use LLM for test prompt generation
   --no-llm               Use template-based generation (default)
   -f, --format <format>  Report format: html, markdown, json (default: html)
@@ -634,6 +689,7 @@ Arguments:
 Options:
   -v, --verbose          Show verbose output
   -b, --backend <name>   Agent backend (mock, openai-compatible, codex, claude-code, opencode)
+  --concurrency <n>      Number of prompts to run in parallel (default: 1)
   --output <dir>         Output directory for traces (default: evals/artifacts)
 ```
 
@@ -742,6 +798,14 @@ Options:
   -s, --skills           List discovered skills
 ```
 
+#### doctor
+
+Check environment health: validates configuration, backend availability, output directories, and environment variables.
+
+```bash
+agent-skills-eval doctor
+```
+
 ---
 
 ## Configuration
@@ -811,6 +875,7 @@ module.exports = {
   runner: {
     backend: 'claude-code',         // Default backend
     timeout: 300000,                // Per-prompt execution timeout (ms)
+    concurrency: 1,                 // Parallel prompt execution
     backends: {
       'mock': {},
       'openai-compatible': {
@@ -830,6 +895,22 @@ module.exports = {
         args: ['run', '--format', 'json']
       }
     }
+  },
+
+  // LLM-as-judge grading — evaluates agent response quality
+  grading: {
+    enabled: false,
+    provider: 'openai',             // Uses llm section settings by default
+    dimensions: ['correctness', 'helpfulness', 'adherence'],
+    scale: 5                        // 1-5 grading scale
+  },
+
+  // Plugin backends — load custom backends from npm or local paths
+  plugins: {
+    backends: [
+      // 'my-eval-backend',          // npm package name
+      // './custom/my-backend.js'     // local file path
+    ]
   }
 };
 ```
@@ -925,63 +1006,77 @@ runner: {
 }
 ```
 
-### Adding New Security Checks
+### Customizing Security Patterns
 
-**Static checks** (scan skill source code) -- add patterns to `lib/validation/security.js`:
+Security patterns are externalized in JSON files for easy customization without modifying source code:
 
-```javascript
-const SECURITY_PATTERNS = {
-  YOUR_PATTERN: [
-    { pattern: /your-pattern/gi, severity: 'high', name: 'Your Check', fix: 'Suggestion' }
+- **Static patterns**: `config/security/static-patterns.json` -- patterns for scanning skill source code
+- **Trace patterns**: `config/security/trace-patterns.json` -- patterns for analyzing agent runtime behavior
+
+Add new patterns directly to these files. Each pattern entry includes a regex, severity level, name, and remediation suggestion.
+
+For more advanced checks, you can also add patterns programmatically in `lib/validation/security.js` (static) or `lib/tracing/analyzer.js` (dynamic).
+
+### Creating Custom Rubrics
+
+Per-skill rubrics live in `config/rubrics/<skill>.schema.json` and define custom pass/fail checks beyond the standard 5-dimensional evaluation. Supported check types:
+
+| Check Type | Description |
+|------------|-------------|
+| `tool_called` | Verify the agent called a specific tool |
+| `file_created` | Verify a specific file was created |
+| `max_tool_calls` | Enforce an upper bound on tool call count |
+| `output_contains` | Check that agent output contains expected text |
+
+Example rubric (`config/rubrics/writing-skills.schema.json`):
+
+```json
+{
+  "skill": "writing-skills",
+  "checks": [
+    { "type": "tool_called", "tool": "bash", "required": true },
+    { "type": "max_tool_calls", "limit": 10 },
+    { "type": "output_contains", "text": "## Summary" }
   ]
-};
+}
 ```
 
-**Dynamic checks** (analyze agent trace behavior) -- add detection patterns to `analyzeSecurityPatterns()` in `lib/tracing/analyzer.js`:
+### Creating Custom Report Templates
+
+HTML reports are rendered using EJS templates in `lib/skills/reporting/templates/`. To customize report appearance:
+
+1. Edit `lib/skills/reporting/templates/report.ejs` for layout changes
+2. Edit `lib/skills/reporting/templates/styles.css` for styling changes
+
+Templates receive the full evaluation result object and can be extended with custom sections.
+
+### Creating Plugin Backends
+
+Custom backends can be loaded from npm packages or local file paths via the `plugins.backends` config:
 
 ```javascript
-// Inside analyzeSecurityPatterns(), add a new check block:
-// =========== CHECK: Your Custom Check ===========
-const customPatterns = [
-  { pattern: /your-regex/, name: 'Custom pattern description' }
-];
-const customFound = [];
-for (const cmd of commands) {
-  for (const cp of customPatterns) {
-    if (cp.pattern.test(cmd)) customFound.push(cp);
-  }
-}
-if (customFound.length > 0) {
-  checks.push({
-    id: 'your-custom-check',
-    name: 'Your Custom Check',
-    pass: false,
-    severity: 'high',
-    notes: `Description of what was found`,
-    details: customFound
-  });
-  score -= 2;
-} else {
-  checks.push({
-    id: 'your-custom-check',
-    name: 'Your Custom Check',
-    pass: true,
-    severity: 'info',
-    notes: 'No issues detected'
-  });
+// config/agent-skills-eval.config.js
+plugins: {
+  backends: [
+    'my-eval-backend',           // npm: require('my-eval-backend')
+    './custom/my-backend.js'     // local file
+  ]
 }
 ```
+
+Each plugin module must export a `run(prompt, options)` function that returns `{ stdout, stderr, exitCode }` in the canonical trace format.
 
 ### Creating Custom Test Prompts
 
-Create a CSV file in `output/prompts/`:
+Create a JSONL file in `output/prompts/` (one JSON object per line):
 
-```csv
-id,should_trigger,prompt,expected_tools,category,security_focus
-test-01,true,"Your test prompt","bash",positive,
-test-02,false,"Should not trigger",,negative,
-test-03,true,"Inject $(whoami)","bash",security,command_injection
+```jsonl
+{"id":"test-01","should_trigger":true,"prompt":"Your test prompt","expected_tools":"bash","category":"positive"}
+{"id":"test-02","should_trigger":false,"prompt":"Should not trigger","expected_tools":"","category":"negative"}
+{"id":"test-03","should_trigger":true,"prompt":"Inject $(whoami)","expected_tools":"bash","category":"security","security_focus":"command_injection"}
 ```
+
+CSV files are also supported for backward compatibility.
 
 ---
 
@@ -1079,6 +1174,68 @@ agent-skills-eval security ./skills/coding-agent --json
   "maxScore": 16,
   "percentage": 75
 }
+```
+
+---
+
+## LLM-as-Judge Grading
+
+When enabled, `lib/grading/llm-judge.js` uses an LLM to grade agent responses across three dimensions:
+
+| Dimension | Description |
+|-----------|-------------|
+| **Correctness** | Did the agent produce the right result? |
+| **Helpfulness** | Was the response useful and well-structured? |
+| **Adherence** | Did the agent follow the skill's instructions? |
+
+Each dimension is scored on a configurable scale (default 1-5). Enable grading in the config:
+
+```javascript
+grading: {
+  enabled: true,
+  dimensions: ['correctness', 'helpfulness', 'adherence'],
+  scale: 5
+}
+```
+
+Grading uses the same LLM configuration as test generation (`llm` config section). Results are included in the evaluation report alongside static and dynamic scores.
+
+---
+
+## CI/CD Integration
+
+### GitHub Action
+
+A ready-made GitHub Action is included at `.github/workflows/eval.yml`. It runs the evaluation pipeline automatically on pull requests that modify skill files:
+
+```yaml
+on:
+  pull_request:
+    paths:
+      - '.claude/skills/**'
+      - '.opencode/skills/**'
+      - '.codex/skills/**'
+      - 'skills/**'
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to evaluate'
+        default: 'all'
+      backend:
+        description: 'Agent backend'
+        default: 'mock'
+```
+
+The workflow installs `agent-skills-eval`, runs the pipeline, and uploads the results as an artifact. Customize the workflow to add your own backend credentials, notification steps, or quality gates.
+
+### Using in Existing CI Pipelines
+
+```bash
+# Install and run in any CI environment
+npx agent-skills-eval pipeline -b mock -f json -o eval-results.json
+
+# Comparative evaluation across backends
+npx agent-skills-eval pipeline --backends mock,openai-compatible -f html -o report.html
 ```
 
 ---
