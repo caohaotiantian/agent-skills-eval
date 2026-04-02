@@ -38,9 +38,9 @@ describe('CLI generate command', () => {
 
       expect(stdout).toContain('Generated');
 
-      // Verify output file exists
-      const csvPath = path.join(testOutputDir, 'coding-agent.csv');
-      const exists = await fs.pathExists(csvPath);
+      // Verify output file exists (JSONL is the new primary format)
+      const jsonlPath = path.join(testOutputDir, 'coding-agent.jsonl');
+      const exists = await fs.pathExists(jsonlPath);
       expect(exists).toBe(true);
     }, 30000);
   });

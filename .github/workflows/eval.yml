@@ -1,0 +1,73 @@
+name: Agent Skills Evaluation
+
+on:
+  pull_request:
+    paths:
+      - '.claude/skills/**'
+      - '.opencode/skills/**'
+      - '.codex/skills/**'
+      - 'skills/**'
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to evaluate'
+        default: 'all'
+      backend:
+        description: 'Agent backend'
+        default: 'mock'
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install agent-skills-eval
+        run: |
+          git clone https://github.com/caohaotiantian/agent-skills-eval.git /tmp/agent-skills-eval
+          cd /tmp/agent-skills-eval && npm install && npm link
+
+      - name: Run evaluation pipeline
+        run: |
+          agent-skills-eval pipeline \
+            -p ${{ github.event.inputs.platform || 'all' }} \
+            -b ${{ github.event.inputs.backend || 'mock' }} \
+            -f json \
+            -o eval-results.json
+
+      - name: Post results as PR comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const results = JSON.parse(fs.readFileSync('eval-results.json', 'utf-8'));
+            const summary = results.summary || {};
+            const body = [
+              '## Agent Skills Evaluation Results\n',
+              '| Metric | Value |',
+              '|--------|-------|',
+              `| Static Score | ${summary.static_score ?? 'N/A'}% |`,
+              `| Dynamic Pass Rate | ${summary.dynamic_pass_rate ?? 'N/A'}% |`,
+              `| Composite Score | ${summary.average_composite_score ?? 'N/A'}% |`,
+              `| Best Performer | ${summary.best_performer ?? 'N/A'} |`,
+              `| Skills Evaluated | ${summary.total_skills_evaluated ?? 0} |`,
+              `| Dynamic Tests | ${summary.total_dynamic_tests ?? 0} |`,
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
+
+      - name: Upload results artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: eval-results.json

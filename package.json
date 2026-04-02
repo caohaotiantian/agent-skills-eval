@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Universal agent skills evaluation tool for Claude Code, OpenCode, and other platforms",
   "main": "lib/index.js",
+  "types": "types/index.d.ts",
   "bin": {
     "agent-skills-eval": "./bin/cli.js"
   },
@@ -16,22 +17,47 @@
     "test": "jest",
     "test:coverage": "jest --coverage"
   },
+  "files": [
+    "bin/",
+    "lib/",
+    "evals/",
+    "config/",
+    "types/",
+    "README.md",
+    "LICENSE"
+  ],
   "keywords": [
     "agent",
     "skills",
     "evaluation",
     "claude-code",
     "opencode",
-    "benchmark"
+    "codex",
+    "openclaw",
+    "benchmark",
+    "eval-skills",
+    "agent-skills"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/caohaotiantian/agent-skills-eval.git"
+  },
+  "homepage": "https://github.com/caohaotiantian/agent-skills-eval#readme",
+  "bugs": {
+    "url": "https://github.com/caohaotiantian/agent-skills-eval/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "author": "",
   "license": "MIT",
   "dependencies": {
     "chalk": "^4.1.2",
     "commander": "^11.0.0",
+    "ejs": "^5.0.1",
     "fs-extra": "^11.1.0",
     "glob": "^10.3.0",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.1.1",
     "minimatch": "^10.2.0",
     "node-fetch": "^3.3.0",
     "openai": "^4.104.0",

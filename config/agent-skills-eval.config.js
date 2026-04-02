@@ -18,6 +18,7 @@ module.exports = {
   // Enable security assessment
   security: {
     enabled: true,
+    llmJudge: false,    // Enable LLM-as-Judge for semantic security analysis (requires LLM config)
     checks: [
       'no-hardcoded-secrets',
       'input-sanitization',
@@ -51,6 +52,13 @@ module.exports = {
     evals:   './config/evals'
   },
 
+  // LLM-as-Judge grading configuration
+  grading: {
+    enabled: false,     // Enable LLM grading (requires LLM config)
+    dimensions: ['correctness', 'helpfulness', 'adherence'],
+    passingScore: 6     // Minimum overall score (1-10) to pass
+  },
+
   // LLM Configuration
   llm: {
     enabled: true,           // Enable LLM features
@@ -69,6 +77,14 @@ module.exports = {
     defaultSamples: 5,       // Default prompts per category
     maxSamples: 20,          // Maximum prompts per category
     templateFallback: true    // Use templates if LLM fails
+  },
+
+  // Plugin configuration
+  plugins: {
+    backends: {
+      // 'my-custom-backend': './path/to/backend.js'
+      // 'npm-backend-package': 'agent-skills-eval-backend-xyz'
+    }
   },
 
   // Runner settings — configures which agent backend executes eval prompts

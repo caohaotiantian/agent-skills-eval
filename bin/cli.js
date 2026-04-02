@@ -102,16 +102,18 @@ program
   .argument('<skill>', 'Skill name to evaluate')
   .option('-v, --verbose', 'Show verbose output')
   .option('-b, --backend <name>', 'Agent backend (mock, openai-compatible, codex, claude-code, opencode)')
+  .option('-c, --concurrency <number>', 'Max parallel prompt executions', parseInt, 1)
   .option('--output <dir>', 'Output directory for traces')
   .action(async (skillName, options) => {
     const runner = require('../evals/runner');
     
     try {
       console.log(chalk.blue(`\nRunning dynamic evaluation for: ${skillName}`));
-      const results = await runner.runEvaluation(skillName, { 
+      const results = await runner.runEvaluation(skillName, {
         verbose: options.verbose,
         outputDir: options.output || getPaths().traces,
-        backend: options.backend
+        backend: options.backend,
+        concurrency: options.concurrency
       });
       
       if (results.error) {
@@ -409,7 +411,7 @@ program
         for (const [cat, count] of Object.entries(result.categoryBreakdown || {})) {
           console.log(`  - ${cat}: ${count}`);
         }
-        console.log(chalk.blue(`\nOutput: ${result.csvPath}`));
+        console.log(chalk.blue(`\nOutput: ${result.outputPath}`));
       }
     } catch (error) {
       console.error(chalk.red('Error generating test cases:'), error.message);
@@ -473,7 +475,7 @@ program
             if (result.usingLLM) {
               console.log(`  - Generated using: LLM (OpenAI)`);
             }
-            console.log(`  - Output: ${result.csvPath}`);
+            console.log(`  - Output: ${result.outputPath}`);
             totalSuccess++;
           }
         }
@@ -505,7 +507,9 @@ program
   .option('-f, --format <format>', 'Report format (html, markdown, json)', 'html')
   .option('-o, --output <file>', 'Report output path')
   .option('--output-dir <dir>', 'Output directory for results')
+  .option('-c, --concurrency <number>', 'Max parallel prompt executions', parseInt, 1)
   .option('--skip-generate', 'Skip test generation (use existing prompts)')
+  .option('--backends <names>', 'Comma-separated backends for comparative evaluation')
   .option('--skip-dynamic', 'Skip dynamic execution and trace analysis')
   .option('--resume', 'Resume from last checkpoint')
   .option('-v, --verbose', 'Show verbose output')
@@ -514,12 +518,18 @@ program
     const { runPipeline } = require('../lib/pipeline');
 
     try {
+      const backends = options.backends
+        ? options.backends.split(',').map(b => b.trim())
+        : null;
+
       const result = await runPipeline({
         skill: options.skill,
         include: options.include,
         exclude: options.exclude,
         platform: options.platform,
         backend: options.backend,
+        backends,
+        concurrency: options.concurrency,
         useLLM: options.llm === true,
         format: options.format,
         output: options.output,
@@ -539,6 +549,85 @@ program
       console.error(chalk.red('Pipeline failed:'), error.message);
       if (options.verbose) console.error(error.stack);
       process.exit(1);
+    }
+  });
+
+// Doctor command
+program
+  .command('doctor')
+  .description('Check system readiness: installed tools, API keys, config validity, output directories')
+  .option('--json', 'Output as JSON')
+  .action(async (options) => {
+    const { checkBackendHealth } = require('../lib/utils/health-check');
+    const { loadConfig, getPaths, ensureOutputDirs } = require('../lib/utils/paths');
+    const { existsSync } = require('fs');
+
+    const results = { backends: {}, config: {}, directories: {}, environment: {} };
+    let allHealthy = true;
+
+    // Check config
+    console.log(chalk.blue('\n=== Configuration ==='));
+    const config = loadConfig();
+    const configExists = Object.keys(config).length > 0;
+    results.config.loaded = configExists;
+    console.log(configExists
+      ? chalk.green('  ✓ Config loaded')
+      : chalk.yellow('  ⚠ No config file found (using defaults)'));
+
+    // Check backends
+    console.log(chalk.blue('\n=== Agent Backends ==='));
+    const runnerCfg = config.runner || {};
+    const backendNames = ['mock', 'openai-compatible', 'codex', 'claude-code', 'opencode'];
+
+    for (const name of backendNames) {
+      const backendConfig = {
+        ...(config.llm || {}),
+        ...((runnerCfg.backends || {})[name] || {})
+      };
+      const health = await checkBackendHealth(name, backendConfig);
+      results.backends[name] = health;
+
+      const icon = health.healthy ? chalk.green('✓') : chalk.red('✗');
+      const extra = health.details.error ? ` (${health.details.error})` : '';
+      console.log(`  ${icon} ${name}${extra}`);
+      if (!health.healthy && name !== 'mock') allHealthy = false;
+    }
+
+    // Check output directories
+    console.log(chalk.blue('\n=== Output Directories ==='));
+    try {
+      await ensureOutputDirs();
+      const paths = getPaths();
+      for (const [key, dir] of Object.entries({ traces: paths.traces, prompts: paths.prompts, results: paths.results, reports: paths.reports })) {
+        results.directories[key] = { path: dir, exists: true };
+        console.log(chalk.green(`  ✓ ${key}: ${dir}`));
+      }
+    } catch (err) {
+      console.log(chalk.red(`  ✗ Failed to create output dirs: ${err.message}`));
+      results.directories.error = err.message;
+      allHealthy = false;
+    }
+
+    // Check environment
+    console.log(chalk.blue('\n=== Environment ==='));
+    results.environment = {
+      OPENAI_API_KEY: !!process.env.OPENAI_API_KEY,
+      OPENAI_BASE_URL: process.env.OPENAI_BASE_URL || '(not set)',
+      OPENAI_MODEL: process.env.OPENAI_MODEL || '(not set)',
+      NODE_VERSION: process.version
+    };
+    console.log(`  Node.js: ${process.version}`);
+    console.log(`  OPENAI_API_KEY: ${results.environment.OPENAI_API_KEY ? chalk.green('set') : chalk.yellow('not set')}`);
+    console.log(`  OPENAI_BASE_URL: ${results.environment.OPENAI_BASE_URL}`);
+    console.log(`  OPENAI_MODEL: ${results.environment.OPENAI_MODEL}`);
+
+    // Summary
+    console.log(allHealthy
+      ? chalk.green('\n✓ System is ready')
+      : chalk.yellow('\n⚠ Some backends are not available (this is OK if you only use mock or openai-compatible)'));
+
+    if (options.json) {
+      console.log(JSON.stringify(results, null, 2));
     }
   });
 

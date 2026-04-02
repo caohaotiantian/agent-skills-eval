@@ -5,7 +5,7 @@
  * The codex CLI natively outputs JSONL trace events.
  */
 
-const { spawnSync } = require('child_process');
+const { spawn } = require('child_process');
 
 function run(prompt, options = {}) {
   const { verbose = false, timeout = 300000, config = {} } = options;
@@ -17,17 +17,32 @@ function run(prompt, options = {}) {
     console.error(`  [codex] Running: ${command} ${args.join(' ').substring(0, 120)}...`);
   }
 
-  const result = spawnSync(command, args, {
-    encoding: 'utf8',
-    timeout,
-    env: { ...process.env }
-  });
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      env: { ...process.env }
+    });
 
-  return {
-    stdout: result.stdout || '',
-    stderr: result.stderr || '',
-    exitCode: result.status ?? 1
-  };
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (data) => { stdout += data.toString(); });
+    child.stderr.on('data', (data) => { stderr += data.toString(); });
+
+    const timer = setTimeout(() => {
+      child.kill();
+      resolve({ stdout, stderr, exitCode: 1 });
+    }, timeout);
+
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      resolve({ stdout, stderr, exitCode: code ?? 1 });
+    });
+
+    child.on('error', (err) => {
+      clearTimeout(timer);
+      resolve({ stdout, stderr: stderr + err.message, exitCode: 1 });
+    });
+  });
 }
 
 module.exports = { run };

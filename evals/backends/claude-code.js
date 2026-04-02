@@ -8,7 +8,7 @@
  * so we normalise them on-the-fly.
  */
 
-const { spawnSync } = require('child_process');
+const { spawn } = require('child_process');
 
 function run(prompt, options = {}) {
   const { verbose = false, timeout = 300000, config = {} } = options;
@@ -20,19 +20,32 @@ function run(prompt, options = {}) {
     console.error(`  [claude-code] Running: ${command} ${args[0]} ... "${prompt.substring(0, 80)}..."`);
   }
 
-  const result = spawnSync(command, args, {
-    encoding: 'utf8',
-    timeout,
-    env: { ...process.env }
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      env: { ...process.env }
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (data) => { stdout += data.toString(); });
+    child.stderr.on('data', (data) => { stderr += data.toString(); });
+
+    const timer = setTimeout(() => {
+      child.kill();
+      resolve({ stdout: normaliseClaudeTrace(stdout), stderr, exitCode: 1 });
+    }, timeout);
+
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      resolve({ stdout: normaliseClaudeTrace(stdout), stderr, exitCode: code ?? 1 });
+    });
+
+    child.on('error', (err) => {
+      clearTimeout(timer);
+      resolve({ stdout: normaliseClaudeTrace(stdout), stderr: stderr + err.message, exitCode: 1 });
+    });
   });
-
-  const stdout = normaliseClaudeTrace(result.stdout || '');
-
-  return {
-    stdout,
-    stderr: result.stderr || '',
-    exitCode: result.status ?? 1
-  };
 }
 
 /**
