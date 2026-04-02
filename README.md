@@ -621,16 +621,20 @@ agent-skills-eval pipeline [options]
 
 Options:
   -s, --skill <name>     Specific skill to evaluate (default: all)
+  -I, --include <glob>   Include skills matching glob pattern (repeatable)
+  -E, --exclude <glob>   Exclude skills matching glob pattern (repeatable)
   -p, --platform <name>  Platform filter (default: all)
   -b, --backend <name>   Agent backend (default: mock)
   --backends <list>      Comma-separated backends for comparative evaluation
-  --concurrency <n>      Number of prompts to run in parallel (default: 1)
+  -c, --concurrency <n>  Number of prompts to run in parallel (default: 1)
   --llm                  Use LLM for test prompt generation
   --no-llm               Use template-based generation (default)
   -f, --format <format>  Report format: html, markdown, json (default: html)
   -o, --output <file>    Report output path
+  --output-dir <dir>     Output directory for results
   --skip-generate        Skip test generation (use existing prompts)
   --skip-dynamic         Skip dynamic execution and trace analysis
+  --resume               Resume from last checkpoint
   -v, --verbose          Show verbose output
   --dry-run              Preview without executing
 ```
@@ -688,7 +692,7 @@ Arguments:
 Options:
   -v, --verbose          Show verbose output
   -b, --backend <name>   Agent backend (mock, openai-compatible, codex, claude-code, opencode)
-  --concurrency <n>      Number of prompts to run in parallel (default: 1)
+  -c, --concurrency <n>  Number of prompts to run in parallel (default: 1)
   --output <dir>         Output directory for traces (default: evals/artifacts)
 ```
 
@@ -802,7 +806,10 @@ Options:
 Check environment health: validates configuration, backend availability, output directories, and environment variables.
 
 ```bash
-agent-skills-eval doctor
+agent-skills-eval doctor [options]
+
+Options:
+  --json                 Output as JSON
 ```
 
 ---
