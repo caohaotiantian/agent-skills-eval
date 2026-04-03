@@ -21,7 +21,7 @@ describe('runParallel', () => {
     ];
     const output = await runParallel(tasks, { concurrency: 2, continueOnError: true });
     expect(output[0]).toBe('ok');
-    expect(output[1]).toBeInstanceOf(Error);
+    expect(output[1]).toEqual({ error: 'fail', passed: false });
     expect(output[2]).toBe('also ok');
   });
 });

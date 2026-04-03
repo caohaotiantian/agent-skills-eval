@@ -13,7 +13,7 @@ async function runParallel(tasks, options = {}) {
         results[index] = await tasks[index]();
       } catch (err) {
         if (continueOnError) {
-          results[index] = err;
+          results[index] = { error: err.message || String(err), passed: false };
         } else {
           throw err;
         }
