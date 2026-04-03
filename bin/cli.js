@@ -511,6 +511,7 @@ program
   .option('--skip-generate', 'Skip test generation (use existing prompts)')
   .option('--backends <names>', 'Comma-separated backends for comparative evaluation')
   .option('--skip-dynamic', 'Skip dynamic execution and trace analysis')
+  .option('--skip-unsafe', 'Skip dynamic execution for skills that fail static security checks')
   .option('--resume', 'Resume from last checkpoint')
   .option('-v, --verbose', 'Show verbose output')
   .option('--dry-run', 'Show what would happen without executing')
@@ -536,6 +537,7 @@ program
         outputDir: options.outputDir,
         skipGenerate: options.skipGenerate,
         skipDynamic: options.skipDynamic,
+        skipUnsafe: options.skipUnsafe,
         resume: options.resume,
         verbose: options.verbose,
         dryRun: options.dryRun

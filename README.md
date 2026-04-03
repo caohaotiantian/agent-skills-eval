@@ -634,6 +634,7 @@ Options:
   --output-dir <dir>     Output directory for results
   --skip-generate        Skip test generation (use existing prompts)
   --skip-dynamic         Skip dynamic execution and trace analysis
+  --skip-unsafe          Skip dynamic execution for skills failing security checks
   --resume               Resume from last checkpoint
   -v, --verbose          Show verbose output
   --dry-run              Preview without executing

@@ -630,6 +630,7 @@ Options:
   --output-dir <dir>     结果输出目录
   --skip-generate        跳过测试生成（使用已有提示词）
   --skip-dynamic         跳过动态执行和 trace 分析
+  --skip-unsafe          跳过未通过安全检查的技能的动态执行
   --resume               从上次检查点恢复
   -v, --verbose          显示详细输出
   --dry-run              预览但不执行
