@@ -19,27 +19,40 @@ const { runParallel } = require('./parallel-runner');
 
 function loadPrompts(skillName) {
   const basePath = getPaths().prompts;
+  let prompts;
 
   // Try JSONL first (new format)
   const jsonlPath = path.join(basePath, `${skillName}.jsonl`);
   if (fs.pathExistsSync(jsonlPath)) {
     const content = fs.readFileSync(jsonlPath, 'utf-8');
-    return content.split('\n').filter(l => l.trim()).map(line => {
+    prompts = content.split('\n').filter(l => l.trim()).map(line => {
       try { return JSON.parse(line); } catch { return null; }
     }).filter(Boolean);
+  } else {
+    // Fall back to CSV (legacy format)
+    const csvPath = path.join(basePath, `${skillName}.csv`);
+    if (!fs.pathExistsSync(csvPath)) return null;
+    const content = fs.readFileSync(csvPath, 'utf-8');
+    const lines = content.split('\n').filter(l => l.trim());
+    if (lines.length < 2) return null;
+    const headers = lines[0].split(',').map(h => h.trim());
+    prompts = lines.slice(1).map(line => {
+      const values = parseCSVLine(line);
+      return headers.reduce((obj, h, i) => { obj[h] = values[i] || ''; return obj; }, {});
+    });
   }
 
-  // Fall back to CSV (legacy format)
-  const csvPath = path.join(basePath, `${skillName}.csv`);
-  if (!fs.pathExistsSync(csvPath)) return null;
-  const content = fs.readFileSync(csvPath, 'utf-8');
-  const lines = content.split('\n').filter(l => l.trim());
-  if (lines.length < 2) return null;
-  const headers = lines[0].split(',').map(h => h.trim());
-  return lines.slice(1).map(line => {
-    const values = parseCSVLine(line);
-    return headers.reduce((obj, h, i) => { obj[h] = values[i] || ''; return obj; }, {});
-  });
+  // Normalize should_trigger to boolean (handles string "true"/"false" from CSV
+  // and potential string values from LLM-generated JSONL)
+  if (prompts) {
+    for (const p of prompts) {
+      if (typeof p.should_trigger === 'string') {
+        p.should_trigger = p.should_trigger === 'true';
+      }
+    }
+  }
+
+  return prompts;
 }
 
 /**
@@ -367,7 +380,7 @@ async function runEvaluation(skillName, options = {}) {
       .map(e => ({ type: e.type, message: e.message || e.error || '', timestamp: e.timestamp }));
 
     // Validate trigger behavior
-    const shouldTrigger = prompt.should_trigger === 'true';
+    const shouldTrigger = prompt.should_trigger === true || prompt.should_trigger === 'true';
     const triggerResult = validateTrigger({
       shouldTrigger,
       expectedTools: prompt.expected_tools,
