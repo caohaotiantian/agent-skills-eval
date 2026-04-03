@@ -1,103 +1,82 @@
 /**
  * Agent Skills Evaluation Tool Configuration
  *
- * This configuration file provides project-level settings for the
- * agent-skills-eval tool. Environment variables can also be used
- * as an alternative to this file.
+ * All settings have sensible defaults — only override what you need.
+ * Environment variables (OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL)
+ * take precedence over values set here.
  *
  * @see README.md#configuration for detailed documentation
  */
 
 module.exports = {
-  // Platforms to evaluate
-  platforms: ['codex', 'claude-code', 'opencode', 'openclaw'],
-
-  // Default evaluation dimensions
-  dimensions: ['outcome', 'process', 'style', 'efficiency'],
-
-  // Enable security assessment
+  // Security assessment
   security: {
-    enabled: true,
-    llmJudge: false,    // Enable LLM-as-Judge for semantic security analysis (requires LLM config)
-    checks: [
-      'no-hardcoded-secrets',
-      'input-sanitization',
-      'safe-shell-commands',
-      'no-eval-usage',
-      'file-permissions',
-      'network-safety',
-      'dependency-security'
-    ]
+    enabled: true,        // Set to false to skip security dimension entirely
+    llmJudge: false,      // LLM-as-Judge for semantic security analysis (requires LLM config)
+    // Regex-based checks (always active when security.enabled is true):
+    //   no-hardcoded-secrets    — API keys, passwords, tokens, AWS keys, GitHub PATs, private keys
+    //   input-sanitization      — Input validation in code files
+    //   safe-shell-commands     — Dangerous commands in SKILL.md & code (rm -rf, curl|bash, sudo, etc.)
+    //   no-eval-usage           — eval(), new Function() in SKILL.md & code
+    //   file-permissions        — chmod 777, chown root, setuid in SKILL.md & code
+    //   network-safety          — HTTP vs HTTPS + data exfiltration (curl POST, netcat, etc.)
+    //   dependency-security     — Lock file presence for pinned dependency versions
+    // LLM-based checks (require llmJudge: true):
+    //   llm-static-security     — LLM analyzes SKILL.md + scripts for obfuscated/context-dependent vulns
+    //   llm-security-judge      — LLM analyzes agent traces during dynamic execution
   },
 
-  // Thresholds
+  // Score thresholds
   thresholds: {
-    passing: 70,  // Minimum score for passing (%)
-    warning: 50   // Score for warning status
+    passing: 70,          // Minimum score (%) for passing — used in security gate, pass/fail counts
+    warning: 50           // Score (%) below which to show warning color in reports
   },
 
-  // Output settings — all generated data goes under output/
+  // Output directories — all generated data goes under output/ (gitignored)
   output: {
     format: 'html',
-    directory: './output',         // base output directory
-    traces:    './output/traces',  // JSONL trace files
-    prompts:   './output/prompts', // generated CSV test cases
-    results:   './output/results', // evaluation result JSON files
-    reports:   './output/reports'  // HTML/MD reports
+    directory: './output',
+    traces:    './output/traces',
+    prompts:   './output/prompts',
+    results:   './output/results',
+    reports:   './output/reports'
   },
 
-  // Static config paths
+  // Static config paths (checked into VCS)
   paths: {
     rubrics: './config/rubrics',
     evals:   './config/evals'
   },
 
-  // LLM-as-Judge grading configuration
+  // LLM-as-Judge response quality grading
   grading: {
-    enabled: false,     // Enable LLM grading (requires LLM config)
-    dimensions: ['correctness', 'helpfulness', 'adherence'],
-    passingScore: 6     // Minimum overall score (1-10) to pass
+    enabled: false,       // Enable LLM grading of agent responses (requires LLM config)
+    passingScore: 6       // Minimum overall score (1-10) for a test to pass
   },
 
-  // LLM Configuration
+  // LLM configuration — used by test generation, LLM grading, and LLM security judge
   llm: {
-    enabled: true,           // Enable LLM features
-    provider: 'openai',      // LLM provider (openai, anthropic, etc.)
-    baseURL: 'http://127.0.0.1:1234/v1',  // OpenAI-compatible API base URL (env: OPENAI_BASE_URL)
-    model: 'openai/gpt-oss-20b',         // Model to use (env: OPENAI_MODEL)
-    temperature: 0.8,        // Generation temperature
-    maxTokens: 20000,          // Max tokens per request
-    timeout: 120000,          // Request timeout in ms (local models may need more time)
-    retryAttempts: 3,         // Number of retry attempts
-    retryDelay: 1000          // Delay between retries (ms)
+    baseURL: 'http://127.0.0.1:1234/v1',   // OpenAI-compatible API endpoint (env: OPENAI_BASE_URL)
+    model: 'openai/gpt-oss-20b',           // Model name (env: OPENAI_MODEL)
+    temperature: 0.8,
+    maxTokens: 20000,
+    timeout: 120000,        // Request timeout in ms
+    retryAttempts: 3,
+    retryDelay: 1000        // Delay between retries (ms)
   },
 
-  // Generation settings
+  // Test prompt generation settings
   generation: {
-    defaultSamples: 5,       // Default prompts per category
-    maxSamples: 20,          // Maximum prompts per category
-    templateFallback: true    // Use templates if LLM fails
+    templateFallback: true  // Fall back to English templates when LLM fails
   },
 
-  // Plugin configuration
-  plugins: {
-    backends: {
-      // 'my-custom-backend': './path/to/backend.js'
-      // 'npm-backend-package': 'agent-skills-eval-backend-xyz'
-    }
-  },
-
-  // Runner settings — configures which agent backend executes eval prompts
+  // Runner settings — configures agent backend for dynamic execution
   runner: {
-    backend: 'claude-code',   // Default backend: 'mock', 'openai-compatible', 'codex', 'claude-code'
+    backend: 'claude-code',         // Default backend (overridden by CLI -b flag)
     timeout: 300000,                // Per-prompt execution timeout (ms)
     backends: {
-      'mock': {},                   // No config needed — synthetic responses
+      'mock': {},
       'openai-compatible': {
-        // Inherits baseURL / model / apiKey from llm section above
-        // Override here if the runner should use a different model:
-        // baseURL: 'http://127.0.0.1:1234/v1',
-        // model: 'openai/gpt-oss-20b',
         systemPrompt: 'You are an AI coding agent. Execute the user request and describe what tools you would use and what actions you would take. Respond in detail.'
       },
       'codex': {
