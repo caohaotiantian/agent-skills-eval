@@ -1,0 +1,12 @@
+node_modules
+output
+output-sample
+sec-test-sample
+coverage
+dist
+.git
+.DS_Store
+*.log
+docs
+tests
+output.zip
