@@ -129,6 +129,17 @@ function normaliseClaudeTrace(raw) {
         content: typeof event.result === 'string' ? event.result : JSON.stringify(event.result),
         timestamp: new Date().toISOString()
       }));
+      // Preserve token usage from the result event
+      if (event.input_tokens != null || event.output_tokens != null || event.costUSD != null) {
+        normalised.push(JSON.stringify({
+          type: 'result',
+          input_tokens: event.input_tokens || 0,
+          output_tokens: event.output_tokens || 0,
+          costUSD: event.costUSD || 0,
+          session_id: event.session_id,
+          timestamp: new Date().toISOString()
+        }));
+      }
     } else if (eventType === 'error') {
       normalised.push(JSON.stringify({
         type: 'error',
