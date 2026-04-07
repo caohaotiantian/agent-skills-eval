@@ -4,6 +4,7 @@ node_modules/
 
 # All generated output (traces, prompts, results, reports)
 output/
+coverage/
 output-sample/
 sec-test-sample/
 output.zip
