@@ -262,6 +262,50 @@ agent-skills-eval doctor
 
 ---
 
+## Docker Evaluation (One-Click)
+
+Evaluate any Agent Skill inside a Docker container with zero local setup:
+
+```bash
+# Clone the repo
+git clone https://github.com/caohaotiantian/agent-skills-eval.git
+cd agent-skills-eval
+
+# Evaluate a skill (builds Docker image on first run)
+./eval-skill.sh -e ANTHROPIC_API_KEY=sk-ant-... /path/to/my-skill
+
+# Or use a .env file
+echo "ANTHROPIC_API_KEY=sk-ant-..." > .env
+./eval-skill.sh /path/to/my-skill
+
+# Dry run with mock backend (no API keys needed)
+./eval-skill.sh -b mock /path/to/my-skill
+
+# Results appear in ./eval-results/
+open eval-results/reports/report-*.html
+```
+
+| Flag | Description |
+|------|-------------|
+| `-e KEY=VALUE` | Set environment variable (repeatable) |
+| `--env-file FILE` | Load env vars from file |
+| `-b, --backend` | Force backend (`claude-code`, `opencode`, `openai-compatible`, `mock`) |
+| `-o, --output DIR` | Output directory (default: `./eval-results`) |
+| `--build` | Force rebuild Docker image |
+| `--llm` | Enable LLM-powered test generation |
+
+### Building the Standalone Binary
+
+```bash
+# Build for current platform
+npm run build
+
+# Build Linux binary (for Docker or CI)
+npm run build:linux
+```
+
+---
+
 ## Quick Start
 
 **One command — full pipeline:**

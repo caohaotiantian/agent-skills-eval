@@ -258,6 +258,50 @@ agent-skills-eval doctor
 
 ---
 
+## Docker 一键评估
+
+在 Docker 容器中评估任意 Agent Skill，无需本地环境配置：
+
+```bash
+# 克隆仓库
+git clone https://github.com/caohaotiantian/agent-skills-eval.git
+cd agent-skills-eval
+
+# 评估技能（首次运行自动构建 Docker 镜像）
+./eval-skill.sh -e ANTHROPIC_API_KEY=sk-ant-... /path/to/my-skill
+
+# 或使用 .env 文件
+echo "ANTHROPIC_API_KEY=sk-ant-..." > .env
+./eval-skill.sh /path/to/my-skill
+
+# 使用 mock 后端进行干跑（无需 API 密钥）
+./eval-skill.sh -b mock /path/to/my-skill
+
+# 结果输出到 ./eval-results/
+open eval-results/reports/report-*.html
+```
+
+| 参数 | 说明 |
+|------|------|
+| `-e KEY=VALUE` | 设置环境变量（可重复使用） |
+| `--env-file FILE` | 从文件加载环境变量 |
+| `-b, --backend` | 指定后端（`claude-code`、`opencode`、`openai-compatible`、`mock`） |
+| `-o, --output DIR` | 输出目录（默认：`./eval-results`） |
+| `--build` | 强制重新构建 Docker 镜像 |
+| `--llm` | 启用 LLM 驱动的测试生成 |
+
+### 构建独立可执行文件
+
+```bash
+# 构建当前平台二进制
+npm run build
+
+# 构建 Linux 二进制（用于 Docker 或 CI）
+npm run build:linux
+```
+
+---
+
 ## 快速开始
 
 **一条命令——完整管线：**
