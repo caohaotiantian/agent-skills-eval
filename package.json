@@ -15,7 +15,9 @@
     "pipeline:mock": "node bin/cli.js pipeline -b mock",
     "pipeline:llm": "node bin/cli.js pipeline --llm -b openai-compatible",
     "test": "jest",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "build": "bun build bin/cli.js --compile --outfile dist/agent-skills-eval",
+    "build:linux": "bun build bin/cli.js --compile --target=bun-linux-x64 --outfile dist/agent-skills-eval-linux"
   },
   "files": [
     "bin/",

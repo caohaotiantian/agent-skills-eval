@@ -12,6 +12,9 @@ output.zip
 # Superpowers docs (plans, specs)
 docs/
 
+# Build output
+dist/
+
 # Legacy output locations (kept for backward compatibility)
 results/
 evals/registry/prompts
