@@ -4,6 +4,9 @@ node_modules/
 
 # All generated output (traces, prompts, results, reports)
 output/
+output-sample/
+sec-test-sample/
+output.zip
 
 # Superpowers docs (plans, specs)
 docs/
