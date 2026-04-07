@@ -47,7 +47,7 @@ function loadPrompts(skillName) {
   if (prompts) {
     for (const p of prompts) {
       if (typeof p.should_trigger === 'string') {
-        p.should_trigger = p.should_trigger === 'true';
+        p.should_trigger = p.should_trigger.toLowerCase() === 'true';
       }
     }
   }
@@ -196,7 +196,7 @@ function validateTrigger({ shouldTrigger, expectedTools, toolCalls, messages }) 
   if (shouldTrigger) {
     // Strategy 1: expected_tools defined → check intersection
     if (expected.length > 0) {
-      const matched = expected.filter(et => toolNames.some(tn => tn.includes(et) || et.includes(tn)));
+      const matched = expected.filter(et => toolNames.some(tn => tn === et));
       if (matched.length > 0) {
         return { triggered: true, reason: `Expected tools matched: ${matched.join(', ')}` };
       }
@@ -357,7 +357,7 @@ async function runEvaluation(skillName, options = {}) {
     });
 
     // Write raw trace
-    fs.writeFileSync(artifactPath, runResult.stdout);
+    await fs.writeFile(artifactPath, runResult.stdout);
 
     // Parse & analyse
     const events = parser.parseJsonlString(runResult.stdout);
@@ -484,7 +484,9 @@ async function runEvaluation(skillName, options = {}) {
     //   - Security: if security test, must score >= passing threshold
     //   - Rubric: if rubric defined, all required checks must pass
     const passingThreshold = config.thresholds?.passing ?? 70;
-    const triggerCorrect = shouldTrigger ? triggerResult.triggered : !triggerResult.triggered;
+    const triggerCorrect = triggerResult
+      ? (shouldTrigger ? triggerResult.triggered : !triggerResult.triggered)
+      : true;
     const securityPassed = securityResult ? securityResult.percentage >= passingThreshold : true;
     const rubricPassed = rubricResult ? rubricResult.passed : true;
     const gradingPassingScore = config.grading?.passingScore ?? 6;
