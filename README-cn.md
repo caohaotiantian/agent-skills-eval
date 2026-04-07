@@ -573,11 +573,11 @@ agent-skills-eval gen writing-skills --llm
 
 ### 4. 效率目标（5 项标准）
 
-衡量资源使用优化（纯指令类技能自动通过）：
+衡量资源使用优化（纯指令类技能的代码相关标准按半权重计算）：
 
 | 标准 | 权重 | 描述 |
 |------|------|------|
-| no-dead-code | 2 | 无死代码或过多依赖 |
+| reasonable-dependency-count | 2 | 依赖数量合理（少于50个） |
 | async-optimization | 2 | 适当使用异步/并行 |
 | caching | 2 | 实现了缓存 |
 | efficient-dependencies | 2 | 最少依赖（<20 生产，<30 开发） |
@@ -1141,7 +1141,7 @@ agent-skills-eval security ./skills/coding-agent --json
 安全占每个技能复合分数的 15%：
 
 ```
-复合分数 = 35% 静态 + 35% 动态通过率 + 15% 效率 + 15% 安全
+复合分数 = 35% 静态 + 35% 动态通过率 + 15% 效率 + 15% 安全（取静态与动态最低值）
 ```
 
 ### 运行安全测试

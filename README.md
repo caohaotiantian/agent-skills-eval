@@ -577,11 +577,11 @@ Measures documentation quality and structure:
 
 ### 4. Efficiency Goals (5 criteria)
 
-Measures resource usage optimization (instruction-only skills pass automatically):
+Measures resource usage optimization (instruction-only skills receive half weight for code-specific criteria):
 
 | Criterion | Weight | Description |
 |-----------|--------|-------------|
-| no-dead-code | 2 | No dead code or excessive dependencies |
+| reasonable-dependency-count | 2 | Reasonable dependency count (under 50) |
 | async-optimization | 2 | Uses async/parallel where appropriate |
 | caching | 2 | Implements caching |
 | efficient-dependencies | 2 | Minimal dependencies (<20 prod, <30 dev) |
@@ -1147,7 +1147,7 @@ Every skill automatically generates 3 security test cases covering attack vector
 Security is 15% of each skill's composite score:
 
 ```
-Composite = 35% Static + 35% Dynamic Pass Rate + 15% Efficiency + 15% Security
+Composite = 35% Static + 35% Dynamic Pass Rate + 15% Efficiency + 15% Security (min of static & dynamic)
 ```
 
 ### Running Security Tests

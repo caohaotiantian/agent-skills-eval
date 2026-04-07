@@ -59,7 +59,7 @@ Both can be augmented with LLM-as-Judge (`lib/grading/llm-judge.js`) when `secur
 
 ### Pipeline orchestration
 
-`lib/pipeline/index.js` chains all stages with checkpoint-based resume support. `lib/pipeline/aggregator.js` merges static + dynamic results into a composite score (35% static, 35% dynamic, 15% efficiency, 15% security) with per-skill rankings.
+`lib/pipeline/index.js` chains all stages with checkpoint-based resume and content-hash caching for unchanged skills. `lib/pipeline/aggregator.js` merges static + dynamic results into a composite score (35% static, 35% dynamic, 15% efficiency, 15% security — security uses min of static & dynamic) with per-skill rankings. Reports show static and dynamic security scores separately.
 
 ## Key Design Patterns
 
