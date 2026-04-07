@@ -6,7 +6,13 @@ FROM oven/bun:1 AS builder
 WORKDIR /build
 COPY . .
 RUN bun install --frozen-lockfile 2>/dev/null || bun install
-RUN bun build bin/cli.js --compile --target=bun-linux-x64 --outfile /build/agent-skills-eval
+ARG TARGETARCH
+RUN if [ "$TARGETARCH" = "arm64" ] || [ "$(uname -m)" = "aarch64" ]; then \
+      BUN_TARGET="bun-linux-arm64"; \
+    else \
+      BUN_TARGET="bun-linux-x64"; \
+    fi && \
+    bun build bin/cli.js --compile --target=$BUN_TARGET --outfile /build/agent-skills-eval
 
 # ============================================================
 # Stage 2: Runtime image with evaluation tools
