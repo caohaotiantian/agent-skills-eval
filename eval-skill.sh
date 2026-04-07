@@ -178,6 +178,7 @@ printf "║  Output:  %-40s║\n" "$OUTPUT_DIR"
 echo "╚══════════════════════════════════════════════════╝"
 echo ""
 
+# Symlink mounted skill into a discoverable location, then run pipeline
 docker run --rm \
   -v "$(cd "$SKILL_PATH" && pwd)":/workspace/skill:ro \
   -v "$(cd "$OUTPUT_DIR" && pwd)":/workspace/output \
@@ -187,8 +188,9 @@ docker run --rm \
   -e OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
   -e OPENAI_BASE_URL="${OPENAI_BASE_URL:-}" \
   -e OPENAI_MODEL="${OPENAI_MODEL:-}" \
+  --entrypoint sh \
   "$IMAGE_NAME" \
-  "${PIPELINE_ARGS[@]}"
+  -c "mkdir -p /root/.claude/skills && ln -s /workspace/skill /root/.claude/skills/$SKILL_NAME && agent-skills-eval ${PIPELINE_ARGS[*]}"
 
 # ---- Print results ----
 echo ""
