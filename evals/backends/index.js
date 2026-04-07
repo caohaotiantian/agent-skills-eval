@@ -2,17 +2,30 @@
  * Backend Registry — maps backend names to their implementation modules.
  * Uses lazy loading so a missing dependency doesn't crash unrelated backends.
  * Supports external backends from npm packages or local paths.
+ *
+ * NOTE: Built-in backends use explicit require() calls (not dynamic string
+ * variables) so that Bun's --compile can statically trace and bundle them.
  */
 
 const path = require('path');
 
-const BUILTIN_BACKENDS = {
-  'mock':              './mock',
-  'openai-compatible': './openai',
-  'codex':             './codex',
-  'claude-code':       './claude-code',
-  'opencode':          './opencode'
-};
+const BUILTIN_BACKEND_NAMES = ['mock', 'openai-compatible', 'codex', 'claude-code', 'opencode'];
+
+/**
+ * Load a built-in backend by name using static require paths.
+ * Bun's compiler cannot resolve `require(variable)` — each path must be a
+ * string literal so the bundler can trace it.
+ */
+function loadBuiltin(name) {
+  switch (name) {
+    case 'mock':              return require('./mock');
+    case 'openai-compatible': return require('./openai');
+    case 'codex':             return require('./codex');
+    case 'claude-code':       return require('./claude-code');
+    case 'opencode':          return require('./opencode');
+    default:                  return null;
+  }
+}
 
 const _cache = {};
 
@@ -26,9 +39,9 @@ function getBackend(name) {
   if (_cache[name]) return _cache[name];
 
   // Check built-in backends first
-  if (BUILTIN_BACKENDS[name]) {
+  if (BUILTIN_BACKEND_NAMES.includes(name)) {
     try {
-      _cache[name] = require(BUILTIN_BACKENDS[name]);
+      _cache[name] = loadBuiltin(name);
       return _cache[name];
     } catch (err) {
       throw new Error(`Failed to load built-in backend "${name}": ${err.message}`);
@@ -45,7 +58,7 @@ function getBackend(name) {
       _cache[name] = require(path.resolve(name));
       return _cache[name];
     } catch {
-      const known = Object.keys(BUILTIN_BACKENDS).join(', ');
+      const known = BUILTIN_BACKEND_NAMES.join(', ');
       throw new Error(`Unknown backend: "${name}". Built-in: ${known}. Or provide an npm package name / local path.`);
     }
   }
@@ -56,7 +69,7 @@ function getBackend(name) {
  * @returns {string[]}
  */
 function listBackends() {
-  return Object.keys(BUILTIN_BACKENDS);
+  return [...BUILTIN_BACKEND_NAMES];
 }
 
 module.exports = { getBackend, listBackends };
