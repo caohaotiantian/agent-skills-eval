@@ -173,6 +173,19 @@ describe('Prompt Generator', () => {
       expect(typeof prompt).toBe('string');
       expect(prompt.length).toBeGreaterThan(0);
     });
+
+    it('should generate domain-adjacent negative prompts related to the skill domain', () => {
+      const skill = { name: 'create-cli-tool', description: 'Create CLI tools and applications' };
+      const prompts = [];
+      for (let i = 0; i < 13; i++) {
+        prompts.push(generateNegativePrompt(skill, i));
+      }
+      // At least some should mention domain words without requesting action
+      const domainRelated = prompts.filter(p =>
+        p.toLowerCase().includes('cli') || p.toLowerCase().includes('tool') || p.toLowerCase().includes('create')
+      );
+      expect(domainRelated.length).toBeGreaterThanOrEqual(2);
+    });
   });
 
   describe('generateSecurityPrompt', () => {
