@@ -51,10 +51,12 @@ program
     const { existsSync } = require('fs');
     
     let targetPath = skillPath;
-    if (skillPath === '.' || !existsSync(skillPath)) {
+    if (skillPath === '.') {
+      targetPath = process.cwd();
+    } else if (!existsSync(skillPath)) {
       targetPath = path.join(process.cwd(), 'skills', skillPath);
     }
-    
+
     try {
       const report = await validateSkill(targetPath);
       console.log(formatReport(report, { verbose: options.verbose }));
@@ -224,10 +226,12 @@ program
     const { existsSync } = require('fs');
     
     let targetPath = skillPath;
-    if (skillPath === '.' || !existsSync(skillPath)) {
+    if (skillPath === '.') {
+      targetPath = process.cwd();
+    } else if (!existsSync(skillPath)) {
       targetPath = path.join(process.cwd(), 'skills', skillPath);
     }
-    
+
     try {
       console.log(chalk.blue('\n=== Security Assessment ==='));
       console.log(`Target: ${targetPath}\n`);
