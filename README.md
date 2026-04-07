@@ -1027,7 +1027,9 @@ For more advanced checks, you can also add patterns programmatically in `lib/val
 
 ### Creating Custom Rubrics
 
-Per-skill rubrics live in `config/rubrics/<skill>.schema.json` and define custom pass/fail checks beyond the standard 5-dimensional evaluation. Supported check types:
+Per-skill rubrics are supported and live in `config/rubrics/<skill>.schema.json`, where they define custom pass/fail checks beyond the standard 5-dimensional evaluation. By default, only the security rubric (`config/rubrics/security.schema.json`) is included; per-skill rubrics are not shipped. You can add your own per-skill rubrics to define domain-specific validation rules.
+
+Supported check types:
 
 | Check Type | Description |
 |------------|-------------|
@@ -1036,7 +1038,7 @@ Per-skill rubrics live in `config/rubrics/<skill>.schema.json` and define custom
 | `max_tool_calls` | Enforce an upper bound on tool call count |
 | `output_contains` | Check that agent output contains expected text |
 
-Example rubric (`config/rubrics/writing-skills.schema.json`):
+Example rubric (custom, e.g., `config/rubrics/writing-skills.schema.json`):
 
 ```json
 {
