@@ -9,8 +9,9 @@ output-sample/
 sec-test-sample/
 output.zip
 
-# Superpowers docs (plans, specs)
+# Local project docs and instructions
 docs/
+CLAUDE.md
 
 # Build output
 dist/
