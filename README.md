@@ -13,6 +13,7 @@ A universal agent skills evaluation tool that strictly follows the [OpenAI eval-
 - [Architecture](#architecture)
 - [Project Structure](#project-structure)
 - [Installation](#installation)
+- [Docker Evaluation (One-Click)](#docker-evaluation-one-click)
 - [Quick Start](#quick-start)
 - [Complete Evaluation Workflow](#complete-evaluation-workflow)
 - [Skill Discovery](#skill-discovery)
@@ -500,7 +501,7 @@ The discovery engine scans multiple platforms and aggregates all skills:
 | Platform | Sources |
 |----------|---------|
 | **Claude Code** | Personal (`~/.claude/skills/`), Project (`.claude/skills/`), Plugins (`~/.claude/plugins/cache/`) |
-| **OpenCode** | Personal (`~/.config/opencode/skills/`), Project (`.opencode/skills/`) |
+| **OpenCode** | Personal (`~/.config/opencode/skills/`, `~/.claude/skills/`, `~/.agents/skills/`), Project (`.opencode/skills/`, `.claude/skills/`, `.agents/skills/` — walks up to git root) |
 | **Codex** | Personal (`~/.codex/skills/`), Project (`.codex/skills/`) |
 | **OpenClaw** | Bundled (`<npm-global>/clawdbot/skills/`, `<npm-global>/clawdbot/extensions/<ext>/skills/`), Managed (`~/.openclaw/skills/`), Workspace (`<workspace>/skills/`) |
 
@@ -971,6 +972,10 @@ module.exports = {
 
 | Variable | Description | Default |
 |----------|-------------|---------|
+| `ANTHROPIC_API_KEY` | API key for Claude Code backend | - |
+| `ANTHROPIC_AUTH_TOKEN` | Auth token for Claude Code backend (alternative) | - |
+| `ANTHROPIC_BASE_URL` | Base URL for Anthropic API | - |
+| `ANTHROPIC_MODEL` | Anthropic model name | - |
 | `OPENAI_API_KEY` | API key for OpenAI-compatible endpoints | - |
 | `OPENAI_BASE_URL` | Base URL for OpenAI-compatible API | (from config) |
 | `OPENAI_MODEL` | Model name for LLM generation | (from config) |
@@ -1041,11 +1046,14 @@ module.exports = { run };
 
 2. **Register in `evals/backends/index.js`**:
 
+Add a case to the `loadBuiltin` switch and add the name to `BUILTIN_BACKEND_NAMES`:
+
 ```javascript
-const BACKENDS = {
-  // ... existing backends
-  'my-agent': require('./my-agent')
-};
+// In loadBuiltin():
+case 'my-agent': return require('./my-agent');
+
+// In BUILTIN_BACKEND_NAMES:
+const BUILTIN_BACKEND_NAMES = ['mock', 'openai-compatible', 'codex', 'claude-code', 'opencode', 'my-agent'];
 ```
 
 3. **Add config** in `config/agent-skills-eval.config.js`:

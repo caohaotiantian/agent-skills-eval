@@ -13,6 +13,7 @@
 - [架构概览](#架构概览)
 - [项目结构](#项目结构)
 - [安装](#安装)
+- [Docker 一键评估](#docker-一键评估)
 - [快速开始](#快速开始)
 - [完整评估流程](#完整评估流程)
 - [技能发现](#技能发现)
@@ -496,7 +497,7 @@ agent-skills-eval report -i output/results/eval-2026-02-12.json -f markdown -o r
 | 平台 | 来源 |
 |------|------|
 | **Claude Code** | 个人 (`~/.claude/skills/`)、项目 (`.claude/skills/`)、插件 (`~/.claude/plugins/cache/`) |
-| **OpenCode** | 个人 (`~/.config/opencode/skills/`)、项目 (`.opencode/skills/`) |
+| **OpenCode** | 个人 (`~/.config/opencode/skills/`、`~/.claude/skills/`、`~/.agents/skills/`)、项目 (`.opencode/skills/`、`.claude/skills/`、`.agents/skills/` — 向上遍历至 git 根目录) |
 | **Codex** | 个人 (`~/.codex/skills/`)、项目 (`.codex/skills/`) |
 | **OpenClaw** | 内置 (`<npm-global>/clawdbot/skills/`、`<npm-global>/clawdbot/extensions/<ext>/skills/`)、托管 (`~/.openclaw/skills/`)、工作区 (`<workspace>/skills/`) |
 
@@ -967,6 +968,10 @@ module.exports = {
 
 | 变量 | 描述 | 默认值 |
 |------|------|--------|
+| `ANTHROPIC_API_KEY` | Claude Code 后端的 API 密钥 | - |
+| `ANTHROPIC_AUTH_TOKEN` | Claude Code 后端的认证令牌（替代方式） | - |
+| `ANTHROPIC_BASE_URL` | Anthropic API 的基础 URL | - |
+| `ANTHROPIC_MODEL` | Anthropic 模型名称 | - |
 | `OPENAI_API_KEY` | OpenAI 兼容端点的 API 密钥 | - |
 | `OPENAI_BASE_URL` | OpenAI 兼容 API 的基础 URL | （来自配置） |
 | `OPENAI_MODEL` | LLM 生成使用的模型名称 | （来自配置） |
