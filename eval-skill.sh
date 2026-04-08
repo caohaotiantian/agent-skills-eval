@@ -161,7 +161,7 @@ fi
 mkdir -p "$OUTPUT_DIR"
 
 # ---- Build pipeline arguments ----
-PIPELINE_ARGS=("pipeline" "-s" "$SKILL_NAME" "-b" "$BACKEND" "-f" "html" "--output-dir" "/workspace/output")
+PIPELINE_ARGS=("pipeline" "-s" "$SKILL_NAME" "-b" "$BACKEND" "-f" "json" "--output-dir" "/workspace/output")
 
 if [[ "$USE_LLM" == "true" ]]; then
   PIPELINE_ARGS+=("--llm")
@@ -197,7 +197,7 @@ echo ""
 echo "════════════════════════════════════════════════════"
 echo "  Evaluation complete!"
 echo "  Results: $OUTPUT_DIR/"
-REPORT=$(ls -t "$OUTPUT_DIR"/reports/report-*.html 2>/dev/null | head -1)
+REPORT=$(ls -t "$OUTPUT_DIR"/reports/report-*.json "$OUTPUT_DIR"/reports/report-*.html 2>/dev/null | head -1)
 if [[ -n "$REPORT" ]]; then
   echo "  Report:  $REPORT"
 fi
