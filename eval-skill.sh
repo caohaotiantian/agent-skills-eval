@@ -180,8 +180,12 @@ echo "╚═══════════════════════�
 echo ""
 
 # Create a temporary HOME directory for the container on the host
+# Clean first: previous failed runs may leave dirs owned by root/remapped UID
+# chmod 777: ensures container user can write even with Docker userns-remap
 EVAL_TMPDIR="$(pwd)/.eval-tmp"
+rm -rf "$EVAL_TMPDIR"
 mkdir -p "$EVAL_TMPDIR"
+chmod 777 "$EVAL_TMPDIR"
 
 # Symlink mounted skill into a discoverable location, then run pipeline
 # Run as host user so output files have correct ownership
