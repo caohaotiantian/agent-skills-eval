@@ -180,24 +180,23 @@ echo "╚═══════════════════════�
 echo ""
 
 # Symlink mounted skill into a discoverable location, then run pipeline
-# Run as host user so output files have correct ownership
-# Use tmpfs for HOME: always writable by any UID, avoids bind-mount permission
-# issues with rootless Docker, userns-remap, and SELinux
+# Run as root inside container (avoids bind-mount permission issues with
+# rootless Docker, userns-remap, and SELinux), then chown output to host user
+HOST_UID=$(id -u)
+HOST_GID=$(id -g)
+
 docker run --rm \
-  --user "$(id -u):$(id -g)" \
   -v "$(cd "$SKILL_PATH" && pwd)":/workspace/skill:ro \
   -v "$(cd "$OUTPUT_DIR" && pwd)":/workspace/output \
-  --tmpfs /workspace/home \
   "${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"}" \
   "${ENV_ARGS[@]+"${ENV_ARGS[@]}"}" \
   -e ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}" \
   -e OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
   -e OPENAI_BASE_URL="${OPENAI_BASE_URL:-}" \
   -e OPENAI_MODEL="${OPENAI_MODEL:-}" \
-  -e HOME=/workspace/home \
   --entrypoint sh \
   "$IMAGE_NAME" \
-  -c "mkdir -p /workspace/home/.claude/skills && ln -s /workspace/skill /workspace/home/.claude/skills/$SKILL_NAME && agent-skills-eval ${PIPELINE_ARGS[*]}"
+  -c "mkdir -p ~/.claude/skills && ln -s /workspace/skill ~/.claude/skills/$SKILL_NAME && agent-skills-eval ${PIPELINE_ARGS[*]}; EXIT_CODE=\$?; chown -R $HOST_UID:$HOST_GID /workspace/output 2>/dev/null; exit \$EXIT_CODE"
 
 # ---- Print results ----
 echo ""
