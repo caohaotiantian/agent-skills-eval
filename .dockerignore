@@ -3,6 +3,7 @@ output
 output-sample
 sec-test-sample
 eval-results
+.eval-tmp
 coverage
 dist
 .git

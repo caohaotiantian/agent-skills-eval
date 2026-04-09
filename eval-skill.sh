@@ -181,22 +181,30 @@ printf "║  Output:  %-40s║\n" "$OUTPUT_DIR"
 echo "╚══════════════════════════════════════════════════╝"
 echo ""
 
+# Create a temporary HOME directory for the container on the host
+EVAL_TMPDIR="$(pwd)/.eval-tmp"
+mkdir -p "$EVAL_TMPDIR"
+
 # Symlink mounted skill into a discoverable location, then run pipeline
 # Run as host user so output files have correct ownership
 docker run --rm \
   --user "$(id -u):$(id -g)" \
   -v "$(cd "$SKILL_PATH" && pwd)":/workspace/skill:ro \
   -v "$(cd "$OUTPUT_DIR" && pwd)":/workspace/output \
+  -v "$EVAL_TMPDIR":/workspace/home \
   "${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"}" \
   "${ENV_ARGS[@]+"${ENV_ARGS[@]}"}" \
   -e ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}" \
   -e OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
   -e OPENAI_BASE_URL="${OPENAI_BASE_URL:-}" \
   -e OPENAI_MODEL="${OPENAI_MODEL:-}" \
-  -e HOME=/tmp \
+  -e HOME=/workspace/home \
   --entrypoint sh \
   "$IMAGE_NAME" \
-  -c "mkdir -p /tmp/.claude/skills && ln -s /workspace/skill /tmp/.claude/skills/$SKILL_NAME && agent-skills-eval ${PIPELINE_ARGS[*]}"
+  -c "mkdir -p /workspace/home/.claude/skills && ln -s /workspace/skill /workspace/home/.claude/skills/$SKILL_NAME && agent-skills-eval ${PIPELINE_ARGS[*]}"
+
+# Clean up temporary directory
+rm -rf "$EVAL_TMPDIR"
 
 # ---- Print results ----
 echo ""

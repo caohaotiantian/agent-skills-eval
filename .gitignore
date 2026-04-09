@@ -16,6 +16,9 @@ CLAUDE.md
 # Build output
 dist/
 
+# Docker eval temp directory
+.eval-tmp/
+
 # Legacy output locations (kept for backward compatibility)
 results/
 evals/registry/prompts
