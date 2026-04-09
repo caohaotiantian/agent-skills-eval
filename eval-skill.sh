@@ -179,11 +179,9 @@ echo "╚═══════════════════════�
 echo ""
 
 # Symlink mounted skill into a discoverable location, then run pipeline
-# Fix output permissions: run as root, chown output to host user afterward
-HOST_UID=$(id -u)
-HOST_GID=$(id -g)
-
+# Run as host user so output files have correct ownership
 docker run --rm \
+  --user "$(id -u):$(id -g)" \
   -v "$(cd "$SKILL_PATH" && pwd)":/workspace/skill:ro \
   -v "$(cd "$OUTPUT_DIR" && pwd)":/workspace/output \
   "${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"}" \
@@ -192,9 +190,10 @@ docker run --rm \
   -e OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
   -e OPENAI_BASE_URL="${OPENAI_BASE_URL:-}" \
   -e OPENAI_MODEL="${OPENAI_MODEL:-}" \
+  -e HOME=/tmp \
   --entrypoint sh \
   "$IMAGE_NAME" \
-  -c "mkdir -p /root/.claude/skills && ln -s /workspace/skill /root/.claude/skills/$SKILL_NAME && agent-skills-eval ${PIPELINE_ARGS[*]}; EXIT_CODE=\$?; chown -R $HOST_UID:$HOST_GID /workspace/output 2>/dev/null; exit \$EXIT_CODE"
+  -c "mkdir -p /tmp/.claude/skills && ln -s /workspace/skill /tmp/.claude/skills/$SKILL_NAME && agent-skills-eval ${PIPELINE_ARGS[*]}"
 
 # ---- Print results ----
 echo ""
