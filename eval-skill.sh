@@ -186,8 +186,8 @@ HOST_UID=$(id -u)
 HOST_GID=$(id -g)
 
 docker run --rm \
-  -v "$(cd "$SKILL_PATH" && pwd)":/workspace/skill:ro \
-  -v "$(cd "$OUTPUT_DIR" && pwd)":/workspace/output \
+  -v "$(cd "$SKILL_PATH" && pwd)":/workspace/skill:ro,z \
+  -v "$(cd "$OUTPUT_DIR" && pwd)":/workspace/output:z \
   "${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"}" \
   "${ENV_ARGS[@]+"${ENV_ARGS[@]}"}" \
   -e ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}" \
