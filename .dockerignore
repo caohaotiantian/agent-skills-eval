@@ -2,11 +2,14 @@ node_modules
 output
 output-sample
 sec-test-sample
+eval-results
 coverage
 dist
 .git
 .DS_Store
 *.log
+.env
+.env.*
 docs
 tests
 output.zip
