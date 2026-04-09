@@ -160,6 +160,9 @@ fi
 # ---- Prepare output directory ----
 mkdir -p "$OUTPUT_DIR"
 
+# Clear stale checkpoint files to prevent false "resumed" state
+rm -f "$OUTPUT_DIR"/results/.pipeline-checkpoint-*.json 2>/dev/null
+
 # ---- Build pipeline arguments ----
 PIPELINE_ARGS=("pipeline" "-s" "$SKILL_NAME" "-b" "$BACKEND" "-f" "html" "--output-dir" "/workspace/output")
 
