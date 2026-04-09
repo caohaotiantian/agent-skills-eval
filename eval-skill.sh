@@ -179,21 +179,15 @@ printf "║  Output:  %-40s║\n" "$OUTPUT_DIR"
 echo "╚══════════════════════════════════════════════════╝"
 echo ""
 
-# Create a temporary HOME directory for the container on the host
-# Clean first: previous failed runs may leave dirs owned by root/remapped UID
-# chmod 777: ensures container user can write even with Docker userns-remap
-EVAL_TMPDIR="$(pwd)/.eval-tmp"
-rm -rf "$EVAL_TMPDIR"
-mkdir -p "$EVAL_TMPDIR"
-chmod 777 "$EVAL_TMPDIR"
-
 # Symlink mounted skill into a discoverable location, then run pipeline
 # Run as host user so output files have correct ownership
+# Use tmpfs for HOME: always writable by any UID, avoids bind-mount permission
+# issues with rootless Docker, userns-remap, and SELinux
 docker run --rm \
   --user "$(id -u):$(id -g)" \
   -v "$(cd "$SKILL_PATH" && pwd)":/workspace/skill:ro \
   -v "$(cd "$OUTPUT_DIR" && pwd)":/workspace/output \
-  -v "$EVAL_TMPDIR":/workspace/home \
+  --tmpfs /workspace/home \
   "${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"}" \
   "${ENV_ARGS[@]+"${ENV_ARGS[@]}"}" \
   -e ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}" \
@@ -204,9 +198,6 @@ docker run --rm \
   --entrypoint sh \
   "$IMAGE_NAME" \
   -c "mkdir -p /workspace/home/.claude/skills && ln -s /workspace/skill /workspace/home/.claude/skills/$SKILL_NAME && agent-skills-eval ${PIPELINE_ARGS[*]}"
-
-# Clean up temporary directory
-rm -rf "$EVAL_TMPDIR"
 
 # ---- Print results ----
 echo ""
