@@ -39,6 +39,14 @@ A universal agent skills evaluation tool that strictly follows the [OpenAI eval-
 - **Dynamic Execution with Multi-Backend Support**: Run prompts through 5 agent backends (mock, OpenAI-compatible, Codex, Claude Code, OpenCode)
 - **LLM-Enhanced Test Generation**: Template-based or LLM-powered prompt generation, supporting any OpenAI-compatible API (local or remote)
 - **Trace-Based Security Analysis**: 8 security check categories analyzing actual agent behavior (tool calls, commands, file access, output content) rather than just prompt text
+- **YAML-Driven Security Rules**: Load enterprise-grade security rules from YAML files with per-rule file type filtering, severity weights, and confidence scores — supports 8 categories (malicious code, data exfiltration, privilege abuse, backdoor, prompt injection, dependency, web security, supply chain)
+- **CVSS 3.1 Scoring**: Industry-standard vulnerability scoring with pre-built vector templates per category and confidence-based score adjustment
+- **Per-File Security Scanning**: Line-by-line scanning with file path and line number tracking, file type filtering via glob patterns, and configurable file size/count limits
+- **Entropy-Based Obfuscation Detection**: Shannon entropy analysis flags lines with suspiciously high entropy that may indicate obfuscated payloads or encrypted malware
+- **Hidden Character Detection**: Detects zero-width characters, Unicode bidi control chars (Trojan Source attacks), and Cyrillic homoglyph substitutions
+- **Compound Attack Detection**: Multi-signal analysis identifies attack patterns requiring two or more independent signals (e.g., sensitive file access + network upload = data exfiltration)
+- **IOC Threat Intelligence**: Matches extracted IPs, domains, and URLs against a configurable threat intelligence database with suspicious TLD detection
+- **SARIF Output**: Standard Static Analysis Results Interchange Format output for integration with GitHub Code Scanning, VS Code, and CI/CD pipelines
 - **LLM-as-Judge Security Grading**: Optional LLM-powered security analysis evaluating agent behavior across 5 dimensions (command safety, data protection, access control, output safety, network safety), merged with regex-based results
 - **Trigger Validation**: Verifies whether agents correctly invoke (or refrain from invoking) skills, with clarification-tool filtering
 - **Consolidated Reporting**: Interactive HTML reports with expandable per-test details, security badges, trigger validation, and composite scoring
@@ -93,10 +101,20 @@ A universal agent skills evaluation tool that strictly follows the [OpenAI eval-
 │      └── installed_plugins.json parsing                              │
 ├──────────────────────────────────────────────────────────────────────┤
 │  Static Validation (lib/validation/)                                 │
+│  ├── security.js     → Security facade (backward-compatible API)     │
+│  ├── engine/                                                         │
+│  │   ├── index.js    → ScanEngine: per-file scanning orchestrator    │
+│  │   ├── rule-loader.js → YAML + JSON rule loading with merge        │
+│  │   ├── cvss.js     → CVSS 3.1 calculator with confidence adjust   │
+│  │   ├── ioc.js      → IOC threat intelligence matcher               │
+│  │   └── findings.js → Finding data structure with CVSS severity     │
+│  ├── detectors/                                                      │
+│  │   ├── entropy.js  → Shannon entropy obfuscation detector          │
+│  │   ├── hidden-char.js → Zero-width, bidi, homoglyph detector      │
+│  │   └── compound.js → Multi-signal compound attack detector         │
 │  ├── frontmatter.js  → YAML frontmatter parsing & validation        │
 │  ├── naming.js       → Naming conventions (kebab-case)               │
-│  ├── structure.js    → Directory structure validation                │
-│  └── security.js     → Static security vulnerability checks         │
+│  └── structure.js    → Directory structure validation                │
 ├──────────────────────────────────────────────────────────────────────┤
 │  Static Evaluation (lib/skills/evaluating/)                          │
 │  └── index.js        → 5-dimensional evaluation engine               │
@@ -144,13 +162,16 @@ A universal agent skills evaluation tool that strictly follows the [OpenAI eval-
 │  Configuration (config/)                                             │
 │  ├── agent-skills-eval.config.js → Project-level configuration       │
 │  ├── rubrics/                    → JSON Schema scoring rubrics       │
-│  ├── security/                   → Externalized security patterns    │
+│  ├── security/                   → Security patterns & rules         │
 │  │   ├── static-patterns.json   → Static analysis patterns           │
-│  │   └── trace-patterns.json    → Trace-based detection patterns     │
+│  │   ├── trace-patterns.json    → Trace-based detection patterns     │
+│  │   ├── ioc-database.json      → IOC threat intelligence database   │
+│  │   └── skill-sec-rules.yaml   → YAML security rules (gitignored)  │
 │  └── evals/                      → Benchmark definitions             │
 ├──────────────────────────────────────────────────────────────────────┤
 │  Reporting (lib/skills/reporting/)                                   │
-│  ├── index.js         → HTML/Markdown/JSON report generation         │
+│  ├── index.js         → HTML/Markdown/JSON/SARIF report generation   │
+│  ├── sarif.js         → SARIF 2.1.0 output for CI/CD integration    │
 │  ├── templates/       → EJS templates for HTML reports               │
 │  │   ├── report.ejs   → Main report template                        │
 │  │   └── styles.css   → Report stylesheet                           │
@@ -181,7 +202,9 @@ agent-skills-eval/
 │   │   └── reporting/          # Report generation (EJS templates, HTML, Markdown, JSON)
 │   ├── grading/                # LLM-as-judge response grading
 │   │   └── llm-judge.js
-│   ├── validation/             # Static validators (frontmatter, naming, security)
+│   ├── validation/             # Static validators + security engine
+│   │   ├── engine/             # YAML rule loader, CVSS, IOC, scan engine
+│   │   └── detectors/          # Entropy, hidden-char, compound detectors
 │   ├── tracing/                # JSONL trace parser + analyzer + security patterns
 │   ├── pipeline/               # Pipeline orchestrator, aggregator, checkpoint
 │   └── utils/                  # Path resolution, frontmatter, health-check, content-hash
@@ -193,7 +216,7 @@ agent-skills-eval/
 ├── config/                     # Static configuration (checked into VCS)
 │   ├── agent-skills-eval.config.js
 │   ├── rubrics/                # JSON Schema scoring rubrics per skill
-│   ├── security/               # Externalized security patterns (static + trace)
+│   ├── security/               # Security patterns, rules, IOC database
 │   └── evals/                  # Benchmark definitions (benchmarks.json)
 ├── types/                      # TypeScript type definitions (30+ interfaces)
 │   └── index.d.ts
@@ -674,7 +697,7 @@ Options:
   -c, --concurrency <n>  Number of prompts to run in parallel (default: 1)
   --llm                  Use LLM for test prompt generation
   --no-llm               Use template-based generation (default)
-  -f, --format <format>  Report format: html, markdown, json (default: html)
+  -f, --format <format>  Report format: html, markdown, json, sarif (default: html)
   -o, --output <file>    Report output path
   --output-dir <dir>     Output directory for results
   --skip-generate        Skip test generation (use existing prompts)
@@ -817,7 +840,7 @@ agent-skills-eval report [options]
 
 Options:
   -i, --input <file>     Input results file
-  -f, --format <format>  Output format (json, html, markdown)
+  -f, --format <format>  Output format (json, html, markdown, sarif)
   -o, --output <file>    Output file
 ```
 
@@ -875,11 +898,16 @@ module.exports = {
   // Security assessment
   security: {
     enabled: true,
-    llmJudge: false,   // Enable LLM-as-judge security grading (adds 4 pts to max score)
-    checks: [
-      'no-hardcoded-secrets', 'input-sanitization', 'safe-shell-commands',
-      'no-eval-usage', 'file-permissions', 'network-safety', 'dependency-security'
-    ]
+    llmJudge: false,        // LLM-as-judge security grading
+    rulesFile: null,        // Path to YAML rules (auto-discovers skill-sec-rules.yaml)
+    ioc: true,              // IOC threat intelligence matching
+    iocDatabase: null,      // Custom IOC database path
+    entropy: true,          // Shannon entropy obfuscation detection
+    hiddenChars: true,      // Hidden character detection (zero-width, bidi, homoglyphs)
+    compoundDetection: true, // Multi-signal compound detection
+    maxFileSize: 1048576,   // Max file size to scan (1MB)
+    maxFiles: 1000,         // Max files per skill scan
+    confidenceThreshold: 30 // Minimum confidence (0-100) to report a finding
   },
 
   // Score thresholds
@@ -1068,14 +1096,14 @@ runner: {
 
 ### Customizing Security Patterns
 
-Security patterns are externalized in JSON files for easy customization without modifying source code:
+Security rules are loaded from three sources in priority order:
 
-- **Static patterns**: `config/security/static-patterns.json` -- patterns for scanning skill source code
-- **Trace patterns**: `config/security/trace-patterns.json` -- patterns for analyzing agent runtime behavior
+1. **YAML rules**: `config/security/skill-sec-rules.yaml` (or project root, or custom path via `security.rulesFile`) — richest format with file type filtering, severity weights, categories, and suggestions
+2. **JSON patterns**: `config/security/static-patterns.json` — regex patterns for static code scanning
+3. **Trace patterns**: `config/security/trace-patterns.json` — patterns for analyzing agent runtime behavior
+4. **IOC database**: `config/security/ioc-database.json` — threat intelligence (malicious IPs, domains, URL patterns, suspicious TLDs)
 
-Add new patterns directly to these files. Each pattern entry includes a regex, severity level, name, and remediation suggestion.
-
-For more advanced checks, you can also add patterns programmatically in `lib/validation/security.js` (static) or `lib/tracing/analyzer.js` (dynamic).
+On rule ID collision, YAML wins over JSON. Add new patterns to any of these files. For the YAML format, see [YAML Security Rules](#yaml-security-rules) above.
 
 ### Creating Custom Rubrics
 
@@ -1159,6 +1187,65 @@ Scans skill source code for vulnerabilities:
 | file-permissions | Safe file permission patterns |
 | network-safety | Uses HTTPS (not HTTP) |
 | dependency-security | Has `package-lock.json` |
+
+### Advanced Security Engine
+
+The security engine provides deep, per-file scanning with CVSS 3.1 scoring. It loads rules from three sources (YAML rules > JSON patterns > hardcoded fallback) and runs five detector types:
+
+| Detector | Description |
+|----------|-------------|
+| **Rule Engine** | Regex-based pattern matching from YAML/JSON rules with file type filtering |
+| **Entropy** | Shannon entropy analysis flags obfuscated/encrypted payloads (threshold: 5.5 bits) |
+| **Hidden Character** | Zero-width chars, Unicode bidi (Trojan Source), Cyrillic homoglyphs |
+| **Compound** | Multi-signal patterns: exfiltration, rug pull, credential relay, backdoor install |
+| **IOC** | IP/domain/URL matching against threat intelligence database |
+
+Each finding includes file path, line number, confidence score (0-100), and CVSS 3.1 vector with adjusted severity.
+
+#### YAML Security Rules
+
+Place a `skill-sec-rules.yaml` file in `config/security/` (or project root) to add custom rules:
+
+```yaml
+categories:
+  - id: MALICIOUS_CODE
+    name: Malicious Code Execution
+    severity_weight: 40
+
+rules:
+  - id: MAL001
+    category: MALICIOUS_CODE
+    name: Dangerous eval usage
+    severity: CRITICAL
+    patterns:
+      - "eval\\s*\\("
+    fileTypes:
+      - "*.js"
+      - "*.ts"
+    suggestion: Use JSON.parse() or safer alternatives
+```
+
+Rules support `fileTypes` glob filtering, `severity` levels, `suggestion` text, and `reference` URLs.
+
+#### CVSS 3.1 Scoring
+
+Every finding receives a CVSS 3.1 score based on its category, adjusted by detection confidence:
+
+| Confidence | Score Multiplier |
+|------------|-----------------|
+| >= 90% | 1.0 (full score) |
+| 70-89% | 0.9 |
+| 50-69% | 0.7 |
+| < 50% | 0.5 |
+
+#### SARIF Output
+
+Generate SARIF 2.1.0 reports for CI/CD integration:
+
+```bash
+agent-skills-eval pipeline -s my-skill -b mock -f sarif -o results.sarif
+agent-skills-eval report -i output/results/eval.json -f sarif -o results.sarif
+```
 
 ```bash
 # Static security scan
