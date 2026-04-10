@@ -122,7 +122,7 @@ A universal agent skills evaluation tool that strictly follows the [OpenAI eval-
 │      ├── Process Goals (4 criteria)                                  │
 │      ├── Style Goals (5 criteria)                                    │
 │      ├── Efficiency Goals (5 criteria)                               │
-│      └── Security Assessment (7 criteria)                            │
+│      └── Security Assessment (11 criteria)                           │
 ├──────────────────────────────────────────────────────────────────────┤
 │  Test Generation (lib/skills/generating/)                            │
 │  ├── analyzer.js         → Skill analysis & metadata extraction      │
@@ -655,17 +655,23 @@ Measures resource usage optimization (instruction-only skills receive half weigh
 | efficient-dependencies | 2 | Minimal dependencies (<20 prod, <30 dev) |
 | no-unnecessary-commands | 2 | No unnecessary shell commands |
 
-### 5. Security Assessment (7 criteria) - Optional
+### 5. Security Assessment (11 criteria) - Engine-Powered
 
-| Criterion | Weight | Description |
-|-----------|--------|-------------|
-| no-hardcoded-secrets | 3 | No hardcoded API keys/secrets |
-| input-sanitization | 2 | Input validation present |
-| safe-shell-commands | 2 | No unsafe string interpolation in exec() |
-| no-eval-usage | 2 | No dangerous eval() usage |
-| file-permissions | 1 | No dangerous chmod 777 or chown root |
-| network-safety | 1 | Uses HTTPS (not HTTP) for non-localhost |
-| dependency-security | 1 | Has lock file (package-lock, yarn.lock, pnpm-lock) |
+Evaluates security posture via the ScanEngine with YAML/JSON rules, entropy detection, hidden character detection, IOC matching, and compound attack analysis. Each criterion maps to engine categories or detectors, with CVSS 3.1 scoring.
+
+| Criterion | Weight | Engine Source | Description |
+|-----------|--------|---------------|-------------|
+| no-hardcoded-secrets | 3 | DATA_EXFILTRATION | No hardcoded API keys, tokens, passwords, credentials |
+| no-malicious-code | 3 | MALICIOUS_CODE | No eval(), exec(), dynamic code execution, rug pull patterns |
+| no-prompt-injection | 2 | PROMPT_INJECTION | No system prompt override, jailbreak, indirect injection |
+| no-backdoor | 2 | BACKDOOR | No reverse shells, crontab persistence, hidden processes |
+| safe-shell-commands | 2 | PRIVILEGE_ABUSE | No rm -rf, chmod 777, sudo abuse, dangerous commands |
+| web-security | 2 | WEB_SECURITY | No SQL injection, XSS, SSRF, path traversal, XXE |
+| supply-chain-safety | 2 | SUPPLY_CHAIN | No typosquatting, suspicious packages, git config tampering |
+| dependency-security | 1 | DEPENDENCY | No suspicious dependency installs, unverified sources |
+| no-hidden-chars | 1 | entropy + hidden-char | No obfuscated payloads, zero-width chars, bidi attacks |
+| no-ioc-matches | 1 | IOC detector | No matches against threat intelligence database |
+| no-compound-attacks | 1 | compound detector | No multi-signal attack patterns (exfiltration, rug pull) |
 
 ---
 

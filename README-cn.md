@@ -118,7 +118,7 @@
 │      ├── 流程目标 (4 项标准)                                           │
 │      ├── 风格目标 (5 项标准)                                           │
 │      ├── 效率目标 (5 项标准)                                           │
-│      └── 安全评估 (7 项标准)                                           │
+│      └── 安全评估 (11 项标准)                                          │
 ├──────────────────────────────────────────────────────────────────────┤
 │  测试生成 (lib/skills/generating/)                                    │
 │  ├── analyzer.js         → 技能分析与元数据提取                        │
@@ -651,17 +651,23 @@ agent-skills-eval gen writing-skills --llm
 | efficient-dependencies | 2 | 最少依赖（<20 生产，<30 开发） |
 | no-unnecessary-commands | 2 | 无不必要的 shell 命令 |
 
-### 5. 安全评估（7 项标准）- 可选
+### 5. 安全评估（11 项标准）- 引擎驱动
 
-| 标准 | 权重 | 描述 |
-|------|------|------|
-| no-hardcoded-secrets | 3 | 无硬编码 API 密钥/密码 |
-| input-sanitization | 2 | 存在输入验证 |
-| safe-shell-commands | 2 | exec() 中无不安全的字符串拼接 |
-| no-eval-usage | 2 | 无危险的 eval() 使用 |
-| file-permissions | 1 | 无危险的 chmod 777 或 chown root |
-| network-safety | 1 | 非本地地址使用 HTTPS（而非 HTTP） |
-| dependency-security | 1 | 存在锁文件（package-lock、yarn.lock、pnpm-lock） |
+通过安全引擎评估安全态势，使用 YAML/JSON 规则、熵检测、隐藏字符检测、IOC 匹配和复合攻击分析。每个标准映射到引擎类别或检测器，配合 CVSS 3.1 评分。
+
+| 标准 | 权重 | 引擎来源 | 描述 |
+|------|------|----------|------|
+| no-hardcoded-secrets | 3 | DATA_EXFILTRATION | 无硬编码的 API 密钥、令牌、密码、凭证 |
+| no-malicious-code | 3 | MALICIOUS_CODE | 无 eval()、exec()、动态代码执行、Rug Pull 模式 |
+| no-prompt-injection | 2 | PROMPT_INJECTION | 无系统提示词覆盖、越狱、间接注入 |
+| no-backdoor | 2 | BACKDOOR | 无反向 Shell、crontab 持久化、隐藏进程 |
+| safe-shell-commands | 2 | PRIVILEGE_ABUSE | 无 rm -rf、chmod 777、sudo 滥用、危险命令 |
+| web-security | 2 | WEB_SECURITY | 无 SQL 注入、XSS、SSRF、路径遍历、XXE |
+| supply-chain-safety | 2 | SUPPLY_CHAIN | 无拼写混淆攻击、可疑包、Git 配置篡改 |
+| dependency-security | 1 | DEPENDENCY | 无可疑依赖安装、未验证来源 |
+| no-hidden-chars | 1 | 熵 + 隐藏字符检测 | 无混淆载荷、零宽字符、双向控制攻击 |
+| no-ioc-matches | 1 | IOC 检测器 | 无威胁情报数据库匹配 |
+| no-compound-attacks | 1 | 复合检测器 | 无多信号攻击模式（数据泄露、Rug Pull） |
 
 ---
 
