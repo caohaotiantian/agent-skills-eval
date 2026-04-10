@@ -66,5 +66,20 @@ describe('ScanEngine', () => {
       expect(result.findings).toHaveLength(0);
       expect(result.error).toBeDefined();
     });
+
+    it('should respect maxFiles limit', async () => {
+      const limited = new ScanEngine({ maxFiles: 1 });
+      const result = await limited.scan(VULN_SKILL);
+      // With maxFiles=1, only one file is scanned, so fewer findings
+      const filesFound = new Set(result.findings.map(f => f.file));
+      expect(filesFound.size).toBeLessThanOrEqual(1);
+    });
+
+    it('should respect maxFileSize limit', async () => {
+      // Set maxFileSize to 1 byte — all files will be skipped
+      const tiny = new ScanEngine({ maxFileSize: 1 });
+      const result = await tiny.scan(VULN_SKILL);
+      expect(result.findings).toHaveLength(0);
+    });
   });
 });

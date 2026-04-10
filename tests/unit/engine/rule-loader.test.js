@@ -47,6 +47,17 @@ describe('loadYAMLRules', () => {
     expect(rules).toEqual([]);
     expect(categories).toEqual([]);
   });
+
+  it('should handle malformed YAML gracefully', () => {
+    const fs = require('fs-extra');
+    const tmp = path.join(__dirname, 'tmp-malformed.yaml');
+    fs.writeFileSync(tmp, 'rules: "not an array"');
+    const { rules, categories } = loadYAMLRules(tmp);
+    // Should not throw, returns empty or partial results
+    expect(Array.isArray(rules)).toBe(true);
+    expect(Array.isArray(categories)).toBe(true);
+    fs.removeSync(tmp);
+  });
 });
 
 describe('loadJSONPatterns', () => {

@@ -57,6 +57,11 @@ describe('IOCMatcher', () => {
     it('should return empty for clean content', () => {
       expect(matcher.matchContent('const x = 42;', 'safe.js', 1)).toHaveLength(0);
     });
+
+    it('should NOT flag code patterns like console.log', () => {
+      const findings = matcher.matchContent('console.log("hello"); path.join("/a", "b");', 'app.js', 1);
+      expect(findings).toHaveLength(0);
+    });
   });
 
   describe('constructor with missing DB', () => {

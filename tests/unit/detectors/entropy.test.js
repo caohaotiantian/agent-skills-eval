@@ -20,7 +20,7 @@ describe('EntropyDetector', () => {
   beforeEach(() => { detector = new EntropyDetector(); });
 
   it('should flag high-entropy lines', () => {
-    const highEntropy = 'xK9$mP2!bR7@nL4&qT6*wZ0#aB3$xY9!mK7@pL2&qR5*wZ0#hJ';
+    const highEntropy = 'aB3$xY9!mK7@pL2&qR5*wZ0#jF8%cN6^dH4+eG1=fI~tU;oW<vQ>';
     const lines = ['const x = 42;', highEntropy, 'const y = "hello";'];
     const findings = detector.scanFile('test.js', lines);
     expect(findings.length).toBeGreaterThan(0);
@@ -38,13 +38,18 @@ describe('EntropyDetector', () => {
   });
 
   it('should skip lock files', () => {
-    const high = 'xK9$mP2!bR7@nL4&qT6*wZ0#aB3$xY9!mK7@pL2&qR5*wZ0#hJ';
+    const high = 'aB3$xY9!mK7@pL2&qR5*wZ0#jF8%cN6^dH4+eG1=fI~tU;oW<vQ>';
     expect(detector.scanFile('package-lock.json', [high])).toHaveLength(0);
   });
 
   it('should skip minified files', () => {
-    const high = 'xK9$mP2!bR7@nL4&qT6*wZ0#aB3$xY9!mK7@pL2&qR5*wZ0#hJ';
+    const high = 'aB3$xY9!mK7@pL2&qR5*wZ0#jF8%cN6^dH4+eG1=fI~tU;oW<vQ>';
     expect(detector.scanFile('bundle.min.js', [high])).toHaveLength(0);
+  });
+
+  it('should skip base64 data URI lines', () => {
+    const dataUri = 'background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAA);';
+    expect(detector.scanFile('style.css', [dataUri])).toHaveLength(0);
   });
 
   it('should not flag normal code', () => {
