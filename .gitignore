@@ -23,3 +23,6 @@ dist/
 results/
 evals/registry/prompts
 evals/artifacts/
+
+# User-provided security rules (not tracked)
+skill-sec-rules.yaml

@@ -13,17 +13,15 @@ module.exports = {
   security: {
     enabled: true,        // Set to false to skip security dimension entirely
     llmJudge: false,      // LLM-as-Judge for semantic security analysis (requires LLM config)
-    // Regex-based checks (always active when security.enabled is true):
-    //   no-hardcoded-secrets    — API keys, passwords, tokens, AWS keys, GitHub PATs, private keys
-    //   input-sanitization      — Input validation in code files
-    //   safe-shell-commands     — Dangerous commands in SKILL.md & code (rm -rf, curl|bash, sudo, etc.)
-    //   no-eval-usage           — eval(), new Function() in SKILL.md & code
-    //   file-permissions        — chmod 777, chown root, setuid in SKILL.md & code
-    //   network-safety          — HTTP vs HTTPS + data exfiltration (curl POST, netcat, etc.)
-    //   dependency-security     — Lock file presence for pinned dependency versions
-    // LLM-based checks (require llmJudge: true):
-    //   llm-static-security     — LLM analyzes SKILL.md + scripts for obfuscated/context-dependent vulns
-    //   llm-security-judge      — LLM analyzes agent traces during dynamic execution
+    rulesFile: null,      // Path to YAML rules file (auto-discovers skill-sec-rules.yaml in project root)
+    ioc: true,            // Enable IOC threat intelligence matching
+    iocDatabase: null,    // Custom IOC database path (defaults to config/security/ioc-database.json)
+    entropy: true,        // Enable Shannon entropy obfuscation detection
+    hiddenChars: true,    // Enable hidden character detection (zero-width, bidi, homoglyphs)
+    compoundDetection: true, // Enable multi-signal compound detection
+    maxFileSize: 1048576, // Max file size to scan (1MB)
+    maxFiles: 1000,       // Max files per skill scan
+    confidenceThreshold: 30, // Minimum confidence (0-100) to report a finding
   },
 
   // Score thresholds
