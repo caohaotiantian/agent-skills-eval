@@ -1,0 +1,38 @@
+info:
+  name: test-rules
+  version: "1.0.0"
+  description: Test rules for unit testing
+
+categories:
+  - id: TEST_CAT
+    name: Test Category
+    severity_weight: 30
+  - id: ANOTHER_CAT
+    name: Another Category
+    severity_weight: 20
+
+rules:
+  - id: TEST001
+    category: TEST_CAT
+    name: Test Rule One
+    severity: HIGH
+    description: Detects test pattern
+    patterns:
+      - "dangerousFunc\\s*\\("
+    fileTypes:
+      - "*.js"
+      - "*.ts"
+    suggestion: Do not use dangerousFunc
+    reference: https://example.com
+
+  - id: TEST002
+    category: ANOTHER_CAT
+    name: Test Rule Two
+    severity: MEDIUM
+    description: Detects another pattern
+    patterns:
+      - "unsafeCall\\("
+      - "riskyMethod\\("
+    fileTypes:
+      - "*.py"
+    suggestion: Use safeCall instead
