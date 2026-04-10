@@ -1,0 +1,15 @@
+{
+  "maliciousIPs": [
+    { "ip": "192.0.2.1", "description": "Example malicious IP (TEST-NET-1)", "confidence": 95 },
+    { "ip": "198.51.100.1", "description": "Example malicious IP (TEST-NET-2)", "confidence": 90 }
+  ],
+  "maliciousDomains": [
+    { "domain": "evil-example.com", "description": "Known malicious domain", "confidence": 95 },
+    { "domain": "malware-dist.net", "description": "Malware distribution", "confidence": 90 }
+  ],
+  "maliciousUrlPatterns": [
+    { "pattern": "https?://[^/]+/malware/.*", "description": "Malware distribution URL" },
+    { "pattern": "https?://[^/]+/phishing/.*", "description": "Phishing URL" }
+  ],
+  "suspiciousTLDs": [".tk", ".ml", ".ga", ".cf", ".gq"]
+}
