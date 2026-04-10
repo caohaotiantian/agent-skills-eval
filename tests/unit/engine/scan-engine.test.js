@@ -82,5 +82,19 @@ describe('ScanEngine', () => {
       const result = await tiny.scan(VULN_SKILL);
       expect(result.findings).toHaveLength(0);
     });
+
+    it('should work when skillPath is a symlink', async () => {
+      const fs = require('fs-extra');
+      const link = path.join(__dirname, 'tmp-symlink-test');
+      fs.removeSync(link);
+      fs.symlinkSync(path.resolve(VULN_SKILL), link);
+      try {
+        const result = await engine.scan(link);
+        expect(result.findings.length).toBeGreaterThan(0);
+        expect(result.error).toBeUndefined();
+      } finally {
+        fs.removeSync(link);
+      }
+    });
   });
 });
