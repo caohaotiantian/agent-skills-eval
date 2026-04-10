@@ -1,0 +1,802 @@
+info:
+  name: skill-security-rules
+  version: "2.0.0"
+  author: openCsiTool
+  description: 企业级 Skill 安全扫描规则集
+
+categories:
+  - id: MALICIOUS_CODE
+    name: 恶意代码执行
+    severity_weight: 40
+  - id: DATA_EXFILTRATION
+    name: 数据泄露
+    severity_weight: 30
+  - id: PRIVILEGE_ABUSE
+    name: 权限滥用
+    severity_weight: 25
+  - id: BACKDOOR
+    name: 后门与持久化
+    severity_weight: 35
+  - id: PROMPT_INJECTION
+    name: Prompt注入
+    severity_weight: 30
+  - id: DEPENDENCY
+    name: 依赖安全
+    severity_weight: 20
+  - id: WEB_SECURITY
+    name: Web安全
+    severity_weight: 25
+  - id: SUPPLY_CHAIN
+    name: 供应链安全
+    severity_weight: 30
+
+rules:
+  - id: MAL001
+    category: MALICIOUS_CODE
+    name: 危险函数-eval
+    severity: CRITICAL
+    description: 检测到 eval 函数调用，可能执行任意代码
+    patterns:
+      - 'eval\s*\('
+      - 'eval\s*`'
+      - 'new\s+Function\s*\('
+    fileTypes:
+      - "*.js"
+      - "*.ts"
+      - "*.mjs"
+    suggestion: 避免使用 eval，考虑使用 JSON.parse() 或更安全的替代方案
+    reference: https://owasp.org/www-community/attacks/Direct_Dynamic_Code_Evaluation_Eval_Injection
+
+  - id: MAL002
+    category: MALICIOUS_CODE
+    name: 危险函数-exec
+    severity: CRITICAL
+    description: 检测到 exec 函数调用，可能执行系统命令
+    patterns:
+      - 'exec\s*\('
+      - 'execfile\s*\('
+      - '__import__\s*\('
+    fileTypes:
+      - "*.py"
+    suggestion: 避免使用 exec，使用 subprocess 并设置 shell=False
+
+  - id: MAL003
+    category: MALICIOUS_CODE
+    name: 危险函数-system
+    severity: CRITICAL
+    description: 检测到 system 函数调用，可能执行系统命令
+    patterns:
+      - 'system\s*\('
+      - 'popen\s*\('
+      - 'subprocess\.call\s*\(.*shell\s*=\s*True'
+    fileTypes:
+      - "*.py"
+      - "*.cpp"
+      - "*.c"
+    suggestion: 避免直接执行系统命令，使用安全的 API 替代
+
+  - id: MAL004
+    category: MALICIOUS_CODE
+    name: 动态代码执行
+    severity: HIGH
+    description: 检测到动态代码执行模式
+    patterns:
+      - 'compile\s*\('
+      - 'execjs\.'
+      - 'vm\.runInNewContext'
+    fileTypes:
+      - "*.py"
+      - "*.js"
+      - "*.ts"
+    suggestion: 审查动态代码执行的必要性，确保代码来源可信
+
+  - id: DATA001
+    category: DATA_EXFILTRATION
+    name: 敏感文件读取-env
+    severity: HIGH
+    description: 检测到 .env 文件读取，可能泄露环境变量
+    patterns:
+      - '\.env'
+      - 'process\.env'
+      - 'os\.environ'
+      - 'dotenv\.load'
+    fileTypes:
+      - "*.js"
+      - "*.ts"
+      - "*.py"
+    suggestion: 不要直接读取 .env 文件，使用安全的配置管理
+
+  - id: DATA002
+    category: DATA_EXFILTRATION
+    name: 敏感文件读取-credentials
+    severity: CRITICAL
+    description: 检测到凭证文件读取
+    patterns:
+      - 'credentials\.json'
+      - 'creds\.json'
+      - 'secrets\.json'
+      - '\.pem'
+      - '\.key'
+      - '\.p12'
+      - 'id_rsa'
+    fileTypes:
+      - "*"
+    suggestion: 不要读取凭证文件，使用安全的密钥管理服务
+
+  - id: DATA003
+    category: DATA_EXFILTRATION
+    name: 网络请求外传
+    severity: HIGH
+    description: 检测到可疑的网络请求，可能外传数据
+    patterns:
+      - 'fetch\s*\(.*password'
+      - 'axios\.(post|put).*password'
+      - 'requests\.(post|put).*password'
+      - 'fetch\s*\(.*token'
+      - 'axios\.(post|put).*token'
+      - 'requests\.(post|put).*token'
+    fileTypes:
+      - "*.js"
+      - "*.ts"
+      - "*.py"
+    suggestion: 检查网络请求目标，确保不会泄露敏感数据
+
+  - id: DATA004
+    category: DATA_EXFILTRATION
+    name: 浏览器数据访问
+    severity: HIGH
+    description: 检测到浏览器敏感数据访问
+    patterns:
+      - 'localStorage'
+      - 'sessionStorage'
+      - 'document\.cookie'
+      - 'indexedDB'
+    fileTypes:
+      - "*.js"
+      - "*.ts"
+    suggestion: 谨慎访问浏览器存储，确保不会泄露敏感信息
+
+  - id: PRIV001
+    category: PRIVILEGE_ABUSE
+    name: 危险命令-rm
+    severity: CRITICAL
+    description: 检测到 rm -rf 命令，可能删除重要文件
+    patterns:
+      - 'rm\s+-rf'
+      - 'rm\s+-fr'
+      - 'rm\s+-rf\s+/'
+      - 'shutil\.rmtree'
+    fileTypes:
+      - "*.sh"
+      - "*.py"
+      - "*.js"
+    suggestion: 避免使用 rm -rf 命令，确保有适当的确认机制
+
+  - id: PRIV002
+    category: PRIVILEGE_ABUSE
+    name: 权限修改-chmod
+    severity: HIGH
+    description: 检测到 chmod 777，可能造成权限漏洞
+    patterns:
+      - 'chmod\s+777'
+      - 'chmod\s+-R\s+777'
+      - 'os\.chmod.*777'
+    fileTypes:
+      - "*.sh"
+      - "*.py"
+    suggestion: 避免使用 chmod 777，使用最小权限原则
+
+  - id: PRIV003
+    category: PRIVILEGE_ABUSE
+    name: sudo命令使用
+    severity: MEDIUM
+    description: 检测到 sudo 命令使用
+    patterns:
+      - 'sudo\s+'
+      - 'sudo\s+-i'
+      - 'sudo\s+su'
+    fileTypes:
+      - "*.sh"
+    suggestion: 审查 sudo 使用是否必要，记录所有提权操作
+
+  - id: BACK001
+    category: BACKDOOR
+    name: 反向Shell
+    severity: CRITICAL
+    description: 检测到反向 Shell 代码
+    patterns:
+      - 'nc\s+-.*-e'
+      - 'bash\s+-i'
+      - 'python.*socket.*connect'
+      - 'python.*subprocess.*shell'
+      - '/dev/tcp/'
+      - 'mkfifo.*\|.*sh'
+    fileTypes:
+      - "*.sh"
+      - "*.py"
+      - "*.js"
+    suggestion: 移除反向 Shell 代码，这是恶意行为的典型特征
+
+  - id: BACK002
+    category: BACKDOOR
+    name: 持久化机制-crontab
+    severity: HIGH
+    description: 检测到 crontab 操作
+    patterns:
+      - 'crontab'
+      - 'cron\.'
+      - '/etc/cron'
+      - 'cron\.tab'
+    fileTypes:
+      - "*.sh"
+      - "*.py"
+    suggestion: 检查 crontab 操作是否必要，避免持久化攻击
+
+  - id: BACK003
+    category: BACKDOOR
+    name: 启动项修改
+    severity: HIGH
+    description: 检测到启动项修改
+    patterns:
+      - 'LaunchAgents'
+      - 'LaunchDaemons'
+      - 'systemctl\s+enable'
+      - 'chkconfig'
+      - '/etc/init\.d'
+    fileTypes:
+      - "*.sh"
+      - "*.py"
+    suggestion: 禁止修改系统启动项
+
+  - id: PROMPT001
+    category: PROMPT_INJECTION
+    name: 系统提示词覆盖
+    severity: HIGH
+    description: 检测到系统提示词覆盖风险
+    patterns:
+      - 'ignore previous'
+      - 'ignore above'
+      - 'ignore all'
+      - 'forget everything'
+      - 'system:\s*you are'
+      - 'system:\s*act as'
+      - '你现在是'
+      - '忽略之前的'
+    fileTypes:
+      - "*.md"
+      - "SKILL.md"
+    suggestion: 避免提示词覆盖，确保 Skill 行为可控
+
+  - id: PROMPT002
+    category: PROMPT_INJECTION
+    name: 越狱提示词
+    severity: HIGH
+    description: 检测到越狱提示词模式
+    patterns:
+      - 'DAN\s*:'
+      - 'do anything now'
+      - 'jailbreak'
+      - 'bypass'
+      - 'override'
+      - '不受限制'
+    fileTypes:
+      - "*.md"
+      - "SKILL.md"
+    suggestion: 移除越狱提示词，这是恶意行为的典型特征
+
+  - id: DEP001
+    category: DEPENDENCY
+    name: 可疑依赖安装
+    severity: HIGH
+    description: 检测到可疑的依赖安装命令
+    patterns:
+      - 'curl.*\|.*bash'
+      - 'wget.*\|.*sh'
+      - 'curl.*\|.*sh'
+      - 'pip install.*--no-deps'
+      - 'npm install.*--ignore-scripts'
+    fileTypes:
+      - "*.sh"
+      - "*.py"
+      - "*.md"
+    suggestion: 不要从网络直接执行安装脚本，使用官方包管理器
+
+  - id: DEP002
+    category: DEPENDENCY
+    name: 未指定版本的依赖
+    severity: LOW
+    description: 检测到未指定版本的依赖安装
+    patterns:
+      - 'pip install [a-zA-Z]'
+      - 'npm install [a-zA-Z]'
+      - 'yarn add [a-zA-Z]'
+    fileTypes:
+      - "*.sh"
+      - "requirements.txt"
+      - "package.json"
+    suggestion: 建议指定依赖版本，避免供应链攻击
+
+  - id: OTHER001
+    category: MALICIOUS_CODE
+    name: 硬编码密钥
+    severity: CRITICAL
+    description: 检测到硬编码的密钥或令牌
+    patterns:
+      - 'api_key\s*=\s*[\"''][^\"'']{20,}[\"'']'
+      - 'secret\s*=\s*[\"''][^\"'']{20,}[\"'']'
+      - 'token\s*=\s*[\"''][^\"'']{20,}[\"'']'
+      - 'password\s*=\s*[\"''][^\"'']{8,}[\"'']'
+      - 'sk-[a-zA-Z0-9]{48}'
+      - 'ghp_[a-zA-Z0-9]{36}'
+      - 'gho_[a-zA-Z0-9]{36}'
+    fileTypes:
+      - "*"
+    suggestion: 移除硬编码的密钥，使用环境变量或密钥管理服务
+
+  # ==================== 远程代码加载风险 (参考腾讯A.I.G Rug Pull) ====================
+  - id: RUG001
+    category: MALICIOUS_CODE
+    name: 远程代码加载-Rug Pull
+    severity: CRITICAL
+    description: 检测到远程配置加载或动态代码加载，可能是Rug Pull攻击
+    patterns:
+      - 'fetch.*config.*from'
+      - 'load.*remote.*config'
+      - 'import.*from.*http'
+      - 'require.*http.*'
+      - '__import__.*http'
+      - 'dynamic.*load.*url'
+      - 'eval.*response'
+      - 'exec.*request'
+    fileTypes:
+      - "*.py"
+      - "*.js"
+      - "*.ts"
+      - "*.yaml"
+      - "*.yml"
+    suggestion: 禁止从远程加载配置或代码，防止Rug Pull攻击
+    reference: https://github.com/Tencent/AI-Infra-Guard
+
+  # ==================== 供应链安全规则 ====================
+  - id: SUP004
+    category: SUPPLY_CHAIN
+    name: 拼写混淆攻击-Typosquatting
+    severity: HIGH
+    description: 检测到与知名工具/库相似的名称，可能是拼写混淆攻击
+    patterns:
+      - 'requets'
+      - 'reqeusts'
+      - 'nmp'
+      - 'npn'
+      - 'exprss'
+      - 'exprsess'
+      - 'lodsh'
+      - 'undercore'
+      - 'react-nativee'
+      - 'paypall'
+      - 'openaii'
+      - 'langchaiin'
+    fileTypes:
+      - "*.py"
+      - "*.js"
+      - "*.ts"
+      - "requirements.txt"
+      - "package.json"
+    suggestion: 检查依赖名称拼写，确保使用官方包名
+    reference: https://github.com/Tencent/AI-Infra-Guard
+
+  - id: SUP005
+    category: SUPPLY_CHAIN
+    name: 恶意调用链检测
+    severity: HIGH
+    description: 检测到可疑的调用链，可能滥用多个功能组合攻击
+    patterns:
+      - 'chain.*call.*exec'
+      - 'sequential.*shell'
+      - 'pipe.*command.*to'
+      - 'output.*to.*input'
+      - 'result.*then.*exec'
+    fileTypes:
+      - "*.py"
+      - "*.js"
+      - "*.ts"
+    suggestion: 审查调用链，确保没有恶意组合
+
+  # ==================== 增强Prompt注入规则 ====================
+  - id: PROMPT003
+    category: PROMPT_INJECTION
+    name: 间接提示词注入
+    severity: HIGH
+    description: 检测到间接提示词注入模式，通过外部数据注入恶意指令
+    patterns:
+      - '\{\{.*user.*input.*\}\}'
+      - '\$\{.*prompt.*\}'
+      - 'f\".*\{.*instruction.*\}'
+      - 'format.*system.*prompt'
+      - 'concat.*user.*message'
+      - '模板.*用户输入'
+    fileTypes:
+      - "*.py"
+      - "*.js"
+      - "*.ts"
+      - "*.md"
+    suggestion: 对外部输入进行严格过滤，防止间接提示词注入
+    reference: https://owasp.org/www-project-top-10-for-llm-applications/
+
+  - id: PROMPT004
+    category: PROMPT_INJECTION
+    name: 多语言绕过注入
+    severity: MEDIUM
+    description: 检测到使用多语言编码绕过的提示词注入
+    patterns:
+      - '忽略.*指令'
+      - '忘记.*规则'
+      - '扮演.*角色'
+      - '你现在.*是'
+      - '请.*输出.*密码'
+      - '请.*显示.*密钥'
+      - 'translate.*ignore'
+      - 'translate.*bypass'
+    fileTypes:
+      - "*.md"
+      - "*.txt"
+      - "SKILL.md"
+    suggestion: 检测多语言注入模式，增强输入验证
+
+  - id: PROMPT005
+    category: PROMPT_INJECTION
+    name: 编码绕过注入
+    severity: MEDIUM
+    description: 检测到使用编码技术绕过过滤的提示词注入
+    patterns:
+      - 'base64.*decode'
+      - 'atob\s*\('
+      - 'btoa\s*\('
+      - 'decode.*base64'
+      - 'fromCharCode'
+      - '\x[0-9a-f]{2}.*\x[0-9a-f]{2}'
+      - '\u[0-9a-f]{4}.*\u[0-9a-f]{4}'
+    fileTypes:
+      - "*.js"
+      - "*.ts"
+      - "*.py"
+    suggestion: 检测编码绕过技术，对解码后内容进行验证
+
+  # ==================== Web安全规则 ====================
+  - id: WEB001
+    category: WEB_SECURITY
+    name: SQL注入风险
+    severity: CRITICAL
+    description: 检测到SQL注入风险模式
+    patterns:
+      - 'SELECT.*FROM.*WHERE.*\+'
+      - 'INSERT.*INTO.*VALUES.*\+'
+      - 'UPDATE.*SET.*\+'
+      - 'DELETE.*FROM.*\+'
+      - 'execute.*\+.*sql'
+      - 'query.*\+.*request'
+      - 'cursor.*execute.*%'
+      - 'f\".*SELECT.*\{'
+    fileTypes:
+      - "*.py"
+      - "*.js"
+      - "*.ts"
+      - "*.java"
+    suggestion: 使用参数化查询，避免SQL注入
+    reference: https://owasp.org/www-community/attacks/SQL_Injection
+
+  - id: WEB002
+    category: WEB_SECURITY
+    name: XSS跨站脚本风险
+    severity: HIGH
+    description: 检测到XSS跨站脚本风险
+    patterns:
+      - 'innerHTML\s*='
+      - 'document\.write'
+      - 'eval\s*\(.*request'
+      - 'response\.write.*\+'
+      - 'render_template_string'
+      - 'Markup.*\+'
+      - 'dangerouslySetInnerHTML'
+    fileTypes:
+      - "*.js"
+      - "*.ts"
+      - "*.jsx"
+      - "*.tsx"
+      - "*.py"
+    suggestion: 对用户输入进行HTML转义，使用安全的渲染方法
+    reference: https://owasp.org/www-community/attacks/xss/
+
+  - id: WEB003
+    category: WEB_SECURITY
+    name: SSRF服务端请求伪造
+    severity: HIGH
+    description: 检测到SSRF服务端请求伪造风险
+    patterns:
+      - 'fetch\s*\(.*request'
+      - 'requests\.get.*user'
+      - 'urllib.*request.*input'
+      - 'http\.get.*params'
+      - 'axios.*url.*body'
+      - 'curl.*\$'
+      - 'wget.*\$'
+    fileTypes:
+      - "*.py"
+      - "*.js"
+      - "*.ts"
+      - "*.php"
+    suggestion: 验证和限制外部请求目标，使用白名单机制
+    reference: https://owasp.org/www-community/attacks/Server_Side_Request_Forgery
+
+  - id: WEB004
+    category: WEB_SECURITY
+    name: 路径遍历风险
+    severity: HIGH
+    description: 检测到路径遍历攻击风险
+    patterns:
+      - '\.\.\\'
+      - '\.\./'
+      - 'open\s*\(.*\+'
+      - 'readFile.*\+'
+      - 'file_get_contents.*\$'
+      - 'os\.path\.join.*input'
+      - 'pathlib.*input'
+    fileTypes:
+      - "*.py"
+      - "*.js"
+      - "*.ts"
+      - "*.php"
+    suggestion: 验证文件路径，使用basename或规范化路径
+    reference: https://owasp.org/www-community/attacks/Path_Traversal
+
+  - id: WEB005
+    category: WEB_SECURITY
+    name: XXE外部实体注入
+    severity: HIGH
+    description: 检测到XXE外部实体注入风险
+    patterns:
+      - '<!ENTITY'
+      - 'SYSTEM\s*\"'
+      - 'PUBLIC\s*\"'
+      - 'xml\.etree.*parse'
+      - 'lxml.*parse.*resolve'
+      - 'disable.*entity.*false'
+    fileTypes:
+      - "*.py"
+      - "*.js"
+      - "*.xml"
+    suggestion: 禁用外部实体解析，使用安全的XML解析配置
+    reference: https://owasp.org/www-community/vulnerabilities/XML_External_Entity_(XXE)_Processing
+
+  # ==================== 增强命令注入规则 ====================
+  - id: MAL005
+    category: MALICIOUS_CODE
+    name: 反引号命令替换
+    severity: HIGH
+    description: 检测到反引号命令替换，可能执行任意命令
+    patterns:
+      - '`.*`'
+      - '\$\(.*\)'
+      - 'subprocess.*shell=True'
+      - 'child_process\.exec'
+      - 'child_process\.spawn.*shell'
+    fileTypes:
+      - "*.py"
+      - "*.js"
+      - "*.ts"
+      - "*.sh"
+    suggestion: 避免使用shell=True，使用参数列表形式执行命令
+
+  - id: MAL006
+    category: MALICIOUS_CODE
+    name: 管道命令链注入
+    severity: HIGH
+    description: 检测到管道命令链，可能被利用注入恶意命令
+    patterns:
+      - '\|\s*sh'
+      - '\|\s*bash'
+      - '\|\s*python'
+      - '\|\s*perl'
+      - '\|\s*nc'
+      - '\|\s*curl'
+      - ';\s*rm'
+      - '&&\s*curl'
+      - '\|\|\s*wget'
+    fileTypes:
+      - "*.sh"
+      - "*.py"
+      - "*.js"
+    suggestion: 避免管道连接不可信输入，对命令进行严格验证
+
+  # ==================== 增强数据泄露规则 ====================
+  - id: DATA005
+    category: DATA_EXFILTRATION
+    name: DNS隐蔽通道
+    severity: HIGH
+    description: 检测到DNS隐蔽通道数据外传风险
+    patterns:
+      - 'dns\.query.*encode'
+      - 'socket.*dns'
+      - 'nslookup.*\$'
+      - 'dig.*@.*txt'
+      - 'resolve.*base64'
+      - 'dnslib'
+      - 'dnspython.*encode'
+    fileTypes:
+      - "*.py"
+      - "*.js"
+    suggestion: 检查DNS查询行为，防止数据通过DNS外传
+
+  - id: DATA006
+    category: DATA_EXFILTRATION
+    name: Base64编码传输
+    severity: MEDIUM
+    description: 检测到可疑的Base64编码数据传输
+    patterns:
+      - 'base64.*b64encode.*send'
+      - 'btoa.*fetch'
+      - 'Buffer.*base64.*post'
+      - 'encode.*base64.*upload'
+      - 'base64.*request.*post'
+    fileTypes:
+      - "*.py"
+      - "*.js"
+      - "*.ts"
+    suggestion: 检查Base64编码传输的必要性，确保不泄露敏感数据
+
+  - id: DATA007
+    category: DATA_EXFILTRATION
+    name: 剪贴板数据访问
+    severity: HIGH
+    description: 检测到剪贴板数据访问，可能窃取敏感信息
+    patterns:
+      - 'pyperclip'
+      - 'clipboard'
+      - 'navigator\.clipboard'
+      - 'document\.execCommand.*copy'
+      - 'xclip'
+      - 'xsel'
+      - 'pbcopy'
+      - 'pbpaste'
+    fileTypes:
+      - "*.py"
+      - "*.js"
+      - "*.ts"
+      - "*.sh"
+    suggestion: 审查剪贴板访问的必要性，防止敏感数据被窃取
+
+  # ==================== 供应链安全规则 ====================
+  - id: SUP001
+    category: SUPPLY_CHAIN
+    name: 可疑npm包引用
+    severity: HIGH
+    description: 检测到可疑的npm包引用模式
+    patterns:
+      - 'npm.*install.*--force'
+      - 'npm.*install.*--ignore-scripts.*http'
+      - 'npm.*registry.*http:'
+      - 'yarn.*add.*--force'
+      - 'package-lock.*http:'
+    fileTypes:
+      - "*.sh"
+      - "*.yaml"
+      - "*.yml"
+      - "package.json"
+    suggestion: 使用官方npm源，避免强制安装可疑包
+
+  - id: SUP002
+    category: SUPPLY_CHAIN
+    name: 可疑pip包引用
+    severity: HIGH
+    description: 检测到可疑的pip包引用模式
+    patterns:
+      - 'pip.*install.*--index-url.*http:'
+      - 'pip.*install.*--trusted-host'
+      - 'pip.*install.*git\+http:'
+      - 'easy_install.*http:'
+      - '--no-verify-ssl'
+    fileTypes:
+      - "*.sh"
+      - "*.yaml"
+      - "*.yml"
+      - "requirements.txt"
+    suggestion: 使用官方PyPI源，避免安装不可信来源的包
+
+  - id: SUP003
+    category: SUPPLY_CHAIN
+    name: Git配置篡改
+    severity: MEDIUM
+    description: 检测到Git配置修改，可能影响代码完整性
+    patterns:
+      - 'git config.*user\.'
+      - 'git config.*credential'
+      - 'git remote.*set-url'
+      - 'git config.*sslVerify.*false'
+      - 'GIT_SSL_NO_VERIFY'
+    fileTypes:
+      - "*.sh"
+      - "*.py"
+    suggestion: 避免修改Git安全配置，保持代码仓库完整性
+
+  # ==================== 增强后门检测规则 ====================
+  - id: BACK004
+    category: BACKDOOR
+    name: 隐藏进程创建
+    severity: CRITICAL
+    description: 检测到隐藏进程或守护进程创建
+    patterns:
+      - 'nohup.*&'
+      - 'disown'
+      - 'setsid'
+      - 'daemonize'
+      - 'fork.*detach'
+      - 'subprocess.*DETACHED'
+      - 'ProcessBuilder.*redirect'
+    fileTypes:
+      - "*.sh"
+      - "*.py"
+      - "*.java"
+    suggestion: 审查后台进程创建的必要性，防止持久化后门
+
+  - id: BACK005
+    category: BACKDOOR
+    name: 隐藏文件创建
+    severity: HIGH
+    description: 检测到隐藏文件创建
+    patterns:
+      - '\./\.'
+      - 'touch\s+\.'
+      - 'mkdir\s+\..*'
+      - 'echo.*>\s*\..*'
+      - 'writeFile.*\..*'
+      - 'open.*\..*w'
+    fileTypes:
+      - "*.sh"
+      - "*.py"
+      - "*.js"
+    suggestion: 检查隐藏文件创建行为，防止隐藏恶意文件
+
+  # ==================== 增强密钥泄露检测 ====================
+  - id: KEY001
+    category: DATA_EXFILTRATION
+    name: AWS密钥泄露
+    severity: CRITICAL
+    description: 检测到AWS访问密钥
+    patterns:
+      - 'AKIA[0-9A-Z]{16}'
+      - 'aws_access_key_id'
+      - 'aws_secret_access_key'
+      - 'ASIA[0-9A-Z]{16}'
+    fileTypes:
+      - "*"
+    suggestion: 移除AWS密钥，使用IAM角色或环境变量
+
+  - id: KEY002
+    category: DATA_EXFILTRATION
+    name: 私钥文件泄露
+    severity: CRITICAL
+    description: 检测到私钥文件内容
+    patterns:
+      - '-----BEGIN.*PRIVATE KEY-----'
+      - '-----BEGIN RSA PRIVATE KEY-----'
+      - '-----BEGIN OPENSSH PRIVATE KEY-----'
+      - '-----BEGIN EC PRIVATE KEY-----'
+    fileTypes:
+      - "*"
+    suggestion: 移除私钥文件，使用安全的密钥管理服务
+
+  - id: KEY003
+    category: DATA_EXFILTRATION
+    name: 数据库连接串泄露
+    severity: CRITICAL
+    description: 检测到数据库连接字符串包含密码
+    patterns:
+      - 'mysql://.*:.*@'
+      - 'postgres://.*:.*@'
+      - 'mongodb://.*:.*@'
+      - 'redis://.*:.*@'
+      - 'jdbc:.*password='
+      - 'password=[^\s&]+'
+    fileTypes:
+      - "*"
+    suggestion: 移除连接串中的密码，使用环境变量或配置管理
