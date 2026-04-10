@@ -25,4 +25,5 @@ evals/registry/prompts
 evals/artifacts/
 
 # User-provided security rules (not tracked)
+config/security/skill-sec-rules.yaml
 skill-sec-rules.yaml
