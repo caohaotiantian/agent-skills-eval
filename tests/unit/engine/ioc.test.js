@@ -43,10 +43,23 @@ describe('IOCMatcher', () => {
       expect(findings.length).toBeGreaterThan(0);
     });
 
-    it('should detect suspicious TLD', () => {
-      const findings = matcher.matchContent('fetch("https://sketchy-site.tk/api")', 'app.js', 10);
+    it('should detect suspicious TLD in non-file context', () => {
+      const findings = matcher.matchContent('connect to sketchy-site.tk for data', 'app.js', 10);
       expect(findings.length).toBeGreaterThan(0);
       expect(findings[0].name).toMatch(/suspicious TLD/i);
+    });
+
+    it('should NOT flag file-extension-like domains as suspicious TLD', () => {
+      // "import model.ml" — the .ml looks like Mali TLD but is a file reference
+      const findings = matcher.matchContent('import model.ml', 'train.py', 1);
+      const tldFindings = findings.filter(f => f.ruleId === 'IOC-TLD');
+      expect(tldFindings).toHaveLength(0);
+    });
+
+    it('should NOT flag quoted path references as suspicious TLD', () => {
+      const findings = matcher.matchContent('open("data.cf")', 'app.py', 5);
+      const tldFindings = findings.filter(f => f.ruleId === 'IOC-TLD');
+      expect(tldFindings).toHaveLength(0);
     });
 
     it('should detect malicious URL pattern', () => {
