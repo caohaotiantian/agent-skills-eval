@@ -39,6 +39,14 @@
 - **多后端动态执行**：通过 5 种智能体后端（mock、OpenAI 兼容、Codex、Claude Code、OpenCode）运行提示词
 - **LLM 增强测试生成**：基于模板或 LLM 驱动的提示词生成，支持任意 OpenAI 兼容 API（本地或远程）
 - **基于 Trace 的安全分析**：8 类安全检查，分析智能体的实际行为（工具调用、命令、文件访问、输出内容），而非仅分析提示词文本
+- **YAML 驱动安全规则**：从 YAML 文件加载企业级安全规则，支持按文件类型过滤、严重性权重和置信度评分——覆盖 8 个类别（恶意代码、数据泄露、权限滥用、后门、Prompt 注入、依赖安全、Web 安全、供应链安全）
+- **CVSS 3.1 评分**：行业标准漏洞评分，为每个类别预建向量模板，支持基于置信度的分数调整
+- **逐文件安全扫描**：逐行扫描并追踪文件路径和行号，支持 glob 模式的文件类型过滤和可配置的文件大小/数量限制
+- **基于熵的混淆检测**：Shannon 熵分析标记具有可疑高熵的行，可能表示混淆的有效载荷或加密恶意软件
+- **隐藏字符检测**：检测零宽字符、Unicode 双向控制字符（Trojan Source 攻击）和西里尔字母同形异义替换
+- **复合攻击检测**：多信号分析识别需要两个或更多独立信号的攻击模式（例如，敏感文件访问 + 网络上传 = 数据泄露）
+- **IOC 威胁情报**：将提取的 IP、域名和 URL 与可配置的威胁情报数据库进行匹配，支持可疑 TLD 检测
+- **SARIF 输出**：标准静态分析结果交换格式输出，可集成 GitHub Code Scanning、VS Code 和 CI/CD 管线
 - **LLM 裁判安全评分**：可选的 LLM 驱动安全分析，从 5 个维度（命令安全、数据保护、访问控制、输出安全、网络安全）评估智能体行为，并与正则匹配结果合并
 - **触发验证**：验证智能体是否正确触发（或避免触发）技能，支持澄清工具过滤
 - **综合报告**：交互式 HTML 报告，包含可展开的测试详情、安全徽章、触发验证和综合评分
@@ -88,11 +96,21 @@
 │      ├── 插件技能     (~/.claude/plugins/cache/...)                    │
 │      └── installed_plugins.json 解析                                   │
 ├──────────────────────────────────────────────────────────────────────┤
-│  静态验证 (lib/validation/)                                           │
-│  ├── frontmatter.js  → YAML frontmatter 解析与验证                     │
-│  ├── naming.js       → 命名规范 (kebab-case)                          │
-│  ├── structure.js    → 目录结构验证                                    │
-│  └── security.js     → 静态安全漏洞检查                                │
+│  静态验证 (lib/validation/)                                          │
+│  ├── security.js     → 安全门面（向后兼容 API）                       │
+│  ├── engine/                                                         │
+│  │   ├── index.js    → ScanEngine：逐文件扫描编排器                   │
+│  │   ├── rule-loader.js → YAML + JSON 规则加载与合并                  │
+│  │   ├── cvss.js     → CVSS 3.1 计算器（含置信度调整）                │
+│  │   ├── ioc.js      → IOC 威胁情报匹配器                            │
+│  │   └── findings.js → Finding 数据结构（含 CVSS 严重性）             │
+│  ├── detectors/                                                      │
+│  │   ├── entropy.js  → Shannon 熵混淆检测器                           │
+│  │   ├── hidden-char.js → 零宽、双向、同形异义字符检测器              │
+│  │   └── compound.js → 多信号复合攻击检测器                           │
+│  ├── frontmatter.js  → YAML frontmatter 解析与验证                    │
+│  ├── naming.js       → 命名规范（kebab-case）                        │
+│  └── structure.js    → 目录结构验证                                   │
 ├──────────────────────────────────────────────────────────────────────┤
 │  静态评估 (lib/skills/evaluating/)                                    │
 │  └── index.js        → 五维评估引擎                                    │
@@ -137,16 +155,19 @@
 │  ├── health-check.js  → 后端健康验证（预检）                           │
 │  └── content-hash.js  → 内容哈希（用于增量缓存）                       │
 ├──────────────────────────────────────────────────────────────────────┤
-│  配置 (config/)                                                       │
-│  ├── agent-skills-eval.config.js → 项目级配置                          │
-│  ├── rubrics/                    → JSON Schema 评分标准                 │
-│  ├── security/                   → 外部化安全模式                       │
-│  │   ├── static-patterns.json   → 静态分析模式                          │
-│  │   └── trace-patterns.json    → Trace 检测模式                        │
-│  └── evals/                      → 基准测试定义                         │
+│  配置 (config/)                                                      │
+│  ├── agent-skills-eval.config.js → 项目级配置                         │
+│  ├── rubrics/                    → JSON Schema 评分量规               │
+│  ├── security/                   → 安全模式与规则                     │
+│  │   ├── static-patterns.json   → 静态分析模式                        │
+│  │   ├── trace-patterns.json    → Trace 检测模式                      │
+│  │   ├── ioc-database.json      → IOC 威胁情报数据库                  │
+│  │   └── skill-sec-rules.yaml   → YAML 安全规则（gitignored）         │
+│  └── evals/                      → 基准定义                          │
 ├──────────────────────────────────────────────────────────────────────┤
 │  报告 (lib/skills/reporting/)                                         │
-│  ├── index.js         → HTML/Markdown/JSON 报告生成                    │
+│  ├── index.js         → HTML/Markdown/JSON/SARIF 报告生成             │
+│  ├── sarif.js         → SARIF 2.1.0 输出（CI/CD 集成）               │
 │  ├── templates/       → EJS 模板（用于 HTML 报告）                     │
 │  │   ├── report.ejs   → 主报告模板                                     │
 │  │   └── styles.css   → 报告样式表                                     │
@@ -177,7 +198,9 @@ agent-skills-eval/
 │   │   └── reporting/          # 报告生成（EJS 模板、HTML、Markdown、JSON）
 │   ├── grading/                # LLM 裁判响应评分
 │   │   └── llm-judge.js
-│   ├── validation/             # 静态验证器（frontmatter、命名、安全）
+│   ├── validation/             # 静态验证器 + 安全引擎
+│   │   ├── engine/             # YAML 规则加载器、CVSS、IOC、扫描引擎
+│   │   └── detectors/          # 熵、隐藏字符、复合检测器
 │   ├── tracing/                # JSONL trace 解析器 + 分析器 + 安全模式
 │   ├── pipeline/               # 管线编排器、聚合器、检查点
 │   └── utils/                  # 路径解析、frontmatter、健康检查、内容哈希
@@ -670,7 +693,7 @@ Options:
   -c, --concurrency <n>  并行运行的提示词数量（默认：1）
   --llm                  使用 LLM 生成测试提示词
   --no-llm               使用基于模板的生成（默认）
-  -f, --format <format>  报告格式：html、markdown、json（默认：html）
+  -f, --format <format>  报告格式：html、markdown、json、sarif（默认：html）
   -o, --output <file>    报告输出路径
   --output-dir <dir>     结果输出目录
   --skip-generate        跳过测试生成（使用已有提示词）
@@ -813,7 +836,7 @@ agent-skills-eval report [options]
 
 Options:
   -i, --input <file>     输入结果文件
-  -f, --format <format>  输出格式（json、html、markdown）
+  -f, --format <format>  输出格式（json、html、markdown、sarif）
   -o, --output <file>    输出文件
 ```
 
@@ -871,11 +894,16 @@ module.exports = {
   // 安全评估
   security: {
     enabled: true,
-    llmJudge: false,   // 启用 LLM 裁判安全评分（为最高分增加 4 分）
-    checks: [
-      'no-hardcoded-secrets', 'input-sanitization', 'safe-shell-commands',
-      'no-eval-usage', 'file-permissions', 'network-safety', 'dependency-security'
-    ]
+    llmJudge: false,        // LLM 裁判安全评分
+    rulesFile: null,        // YAML 规则路径（自动发现 skill-sec-rules.yaml）
+    ioc: true,              // IOC 威胁情报匹配
+    iocDatabase: null,      // 自定义 IOC 数据库路径
+    entropy: true,          // Shannon 熵混淆检测
+    hiddenChars: true,      // 隐藏字符检测（零宽、双向、同形异义）
+    compoundDetection: true, // 多信号复合检测
+    maxFileSize: 1048576,   // 最大扫描文件大小（1MB）
+    maxFiles: 1000,         // 每个技能最大扫描文件数
+    confidenceThreshold: 30 // 最低报告置信度（0-100）
   },
 
   // 分数阈值
@@ -1061,14 +1089,14 @@ runner: {
 
 ### 自定义安全模式
 
-安全模式以 JSON 文件形式外部化，便于自定义而无需修改源代码：
+安全规则按优先级从三个来源加载：
 
-- **静态模式**：`config/security/static-patterns.json`——用于扫描技能源代码的模式
-- **Trace 模式**：`config/security/trace-patterns.json`——用于分析智能体运行时行为的模式
+1. **YAML 规则**：`config/security/skill-sec-rules.yaml`（或项目根目录，或通过 `security.rulesFile` 自定义路径）——最丰富的格式，支持文件类型过滤、严重性权重、类别和建议
+2. **JSON 模式**：`config/security/static-patterns.json`——用于静态代码扫描的正则模式
+3. **Trace 模式**：`config/security/trace-patterns.json`——用于分析智能体运行时行为的模式
+4. **IOC 数据库**：`config/security/ioc-database.json`——威胁情报（恶意 IP、域名、URL 模式、可疑 TLD）
 
-直接在这些文件中添加新模式。每个模式条目包含正则表达式、严重程度、名称和修复建议。
-
-对于更高级的检查，还可以在 `lib/validation/security.js`（静态）或 `lib/tracing/analyzer.js`（动态）中以编程方式添加模式。
+规则 ID 冲突时，YAML 优先于 JSON。可以向任何这些文件添加新模式。YAML 格式详见上文 [YAML 安全规则](#yaml-安全规则)。
 
 ### 创建自定义评分标准
 
@@ -1150,6 +1178,65 @@ plugins: {
 | file-permissions | 安全的文件权限模式 |
 | network-safety | 使用 HTTPS（而非 HTTP） |
 | dependency-security | 存在 `package-lock.json` |
+
+### 高级安全引擎
+
+安全引擎提供深度逐文件扫描和 CVSS 3.1 评分。它从三个来源加载规则（YAML 规则 > JSON 模式 > 硬编码回退），并运行五种检测器：
+
+| 检测器 | 描述 |
+|--------|------|
+| **规则引擎** | 基于 YAML/JSON 规则的正则模式匹配，支持文件类型过滤 |
+| **熵检测** | Shannon 熵分析标记混淆/加密的有效载荷（阈值：5.5 bits） |
+| **隐藏字符** | 零宽字符、Unicode 双向控制（Trojan Source）、西里尔同形异义字符 |
+| **复合检测** | 多信号模式：数据泄露、Rug Pull、凭证中继、后门安装 |
+| **IOC** | IP/域名/URL 与威胁情报数据库匹配 |
+
+每个发现包含文件路径、行号、置信度评分（0-100）和 CVSS 3.1 向量（含调整后的严重性）。
+
+#### YAML 安全规则
+
+将 `skill-sec-rules.yaml` 文件放在 `config/security/`（或项目根目录）中以添加自定义规则：
+
+```yaml
+categories:
+  - id: MALICIOUS_CODE
+    name: 恶意代码执行
+    severity_weight: 40
+
+rules:
+  - id: MAL001
+    category: MALICIOUS_CODE
+    name: 危险 eval 使用
+    severity: CRITICAL
+    patterns:
+      - "eval\\s*\\("
+    fileTypes:
+      - "*.js"
+      - "*.ts"
+    suggestion: 使用 JSON.parse() 或更安全的替代方案
+```
+
+规则支持 `fileTypes` glob 过滤、`severity` 级别、`suggestion` 建议文本和 `reference` 参考 URL。
+
+#### CVSS 3.1 评分
+
+每个发现根据其类别获得 CVSS 3.1 分数，并按检测置信度进行调整：
+
+| 置信度 | 分数乘数 |
+|--------|---------|
+| >= 90% | 1.0（满分） |
+| 70-89% | 0.9 |
+| 50-69% | 0.7 |
+| < 50% | 0.5 |
+
+#### SARIF 输出
+
+生成 SARIF 2.1.0 报告用于 CI/CD 集成：
+
+```bash
+agent-skills-eval pipeline -s my-skill -b mock -f sarif -o results.sarif
+agent-skills-eval report -i output/results/eval.json -f sarif -o results.sarif
+```
 
 ```bash
 # 静态安全扫描
