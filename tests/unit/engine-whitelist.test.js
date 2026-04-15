@@ -4,7 +4,9 @@
 
 const path = require('path');
 const fs = require('fs-extra');
+const os = require('os');
 const { loadWhitelist, discoverWhitelistPath } = require('../../lib/validation/engine/rule-loader');
+const { ScanEngine } = require('../../lib/validation/engine');
 
 describe('loadWhitelist', () => {
   it('should load whitelist from YAML file', async () => {
@@ -31,6 +33,38 @@ describe('loadWhitelist', () => {
     expect(result.filePatterns).toEqual([]);
     expect(result.trustedDomains).toEqual([]);
     expect(result.ruleOverrides).toEqual({ disabled: [], severityOverrides: {} });
+  });
+});
+
+describe('ScanEngine whitelist integration', () => {
+  let tmpDir;
+
+  beforeEach(async () => {
+    tmpDir = path.join(os.tmpdir(), `scan-wl-test-${Date.now()}`);
+    await fs.ensureDir(tmpDir);
+  });
+
+  afterEach(async () => {
+    await fs.remove(tmpDir);
+  });
+
+  it('should skip files matching whitelist filePatterns', async () => {
+    await fs.writeFile(path.join(tmpDir, 'README.md'), 'eval(payload); rm -rf /');
+    await fs.writeFile(path.join(tmpDir, 'SKILL.md'), 'This skill is safe.');
+    const engine = new ScanEngine({ ioc: false, entropy: false, hiddenChars: false, compoundDetection: false });
+    const result = await engine.scan(tmpDir);
+    const readmeFindings = result.findings.filter(f => f.file === 'README.md');
+    expect(readmeFindings).toHaveLength(0);
+  });
+
+  it('should apply disabled rule overrides', async () => {
+    await fs.writeFile(path.join(tmpDir, 'test.sh'), 'sudo rm -rf /tmp/test');
+    const wlPath = path.join(tmpDir, 'whitelist.yaml');
+    await fs.writeFile(wlPath, 'filePatterns: []\ntrustedDomains: []\nruleOverrides:\n  disabled:\n    - PRIV001\n  severityOverrides: {}');
+    const engine = new ScanEngine({ whitelistFile: wlPath, ioc: false, entropy: false, hiddenChars: false, compoundDetection: false });
+    const result = await engine.scan(tmpDir);
+    const priv001 = result.findings.filter(f => f.ruleId === 'PRIV001');
+    expect(priv001).toHaveLength(0);
   });
 });
 
