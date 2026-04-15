@@ -300,9 +300,8 @@ describe('ScanEngine severity overrides', () => {
     const result = await engine.scan(tmpDir);
     const mal001 = result.findings.filter(f => f.ruleId === 'MAL001');
     expect(mal001.length).toBeGreaterThanOrEqual(1);
-    // CVSS recalculates severity, but the rule's base severity was overridden to low
-    // The finding should exist (not suppressed) — severity may be adjusted by CVSS
-    expect(mal001[0]).toBeDefined();
+    // Severity override should take precedence over CVSS-derived severity
+    expect(mal001[0].severity).toBe('low');
   });
 });
 

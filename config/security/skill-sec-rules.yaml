@@ -466,20 +466,16 @@ rules:
     category: PROMPT_INJECTION
     name: 编码绕过注入
     severity: MEDIUM
-    confidence: 65
+    confidence: 50
+    markdownConfidence: 30
     description: 检测到使用编码技术绕过过滤的提示词注入
     patterns:
-      - 'base64.*decode'
-      - 'atob\s*\('
-      - 'btoa\s*\('
-      - 'decode.*base64'
-      - 'fromCharCode'
       - '\x[0-9a-f]{2}.*\x[0-9a-f]{2}'
       - '\u[0-9a-f]{4}.*\u[0-9a-f]{4}'
     fileTypes:
-      - "*.js"
-      - "*.ts"
-      - "*.py"
+      - "*.md"
+      - "*.txt"
+      - "SKILL.md"
     suggestion: 检测编码绕过技术，对解码后内容进行验证
 
   # ==================== Web安全规则 ====================
