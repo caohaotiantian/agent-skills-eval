@@ -33,6 +33,26 @@ categories:
     name: 加密弱点
     severity_weight: 15
 
+# Detector-based evaluation criteria — these map to algorithmic detectors (not regex rules).
+# Each entry generates a security assessment criterion with the given name and weight.
+detectors:
+  - id: hidden-char
+    name: 无隐藏/混淆内容
+    weight: 1
+    engines:
+      - entropy
+      - hidden-char
+  - id: ioc
+    name: 无威胁情报匹配
+    weight: 1
+    engines:
+      - ioc
+  - id: compound
+    name: 无复合攻击模式
+    weight: 1
+    engines:
+      - compound
+
 rules:
   - id: MAL001
     category: MALICIOUS_CODE
