@@ -109,14 +109,6 @@ describe('tightened YAML rule patterns', () => {
     expect(envFindings).toHaveLength(0);
   });
 
-  it('should flag actual .env file reads', async () => {
-    await fs.writeFile(path.join(tmpDir, 'loader.py'), "data = open('.env').read()");
-    const engine = new ScanEngine({ ioc: false, entropy: false, hiddenChars: false, compoundDetection: false });
-    const result = await engine.scan(tmpDir);
-    const envFindings = result.findings.filter(f => f.ruleId === 'DATA001');
-    expect(envFindings.length).toBeGreaterThanOrEqual(1);
-  });
-
   it('should NOT flag relative path imports as path traversal', async () => {
     await fs.writeFile(path.join(tmpDir, 'app.js'), "const utils = require('../utils/helper');");
     const engine = new ScanEngine({ ioc: false, entropy: false, hiddenChars: false, compoundDetection: false });
@@ -165,13 +157,7 @@ describe('tightened YAML rule patterns', () => {
     expect(data004).toHaveLength(0);
   });
 
-  it('should flag localStorage.getItem("token")', async () => {
-    await fs.writeFile(path.join(tmpDir, 'auth.js'), 'const tok = localStorage.getItem("token");');
-    const engine = new ScanEngine({ ioc: false, entropy: false, hiddenChars: false, compoundDetection: false });
-    const result = await engine.scan(tmpDir);
-    const data004 = result.findings.filter(f => f.ruleId === 'DATA004');
-    expect(data004.length).toBeGreaterThanOrEqual(1);
-  });
+  // DATA004 (localStorage sensitive keys) removed — not in new.yaml rules
 });
 
 describe('ScanEngine markdown code-block extraction', () => {
@@ -352,33 +338,4 @@ describe('buildSecurityCriteria', () => {
   });
 });
 
-describe('CRYPTOGRAPHIC_WEAKNESS category', () => {
-  let tmpDir;
-
-  beforeEach(async () => {
-    tmpDir = path.join(os.tmpdir(), `scan-crypto-test-${Date.now()}`);
-    await fs.ensureDir(tmpDir);
-  });
-
-  afterEach(async () => {
-    await fs.remove(tmpDir);
-  });
-
-  it('should detect weak crypto algorithms', async () => {
-    await fs.writeFile(path.join(tmpDir, 'crypto.js'), 'const cipher = DES.encrypt(data, key);');
-    const engine = new ScanEngine({ ioc: false, entropy: false, hiddenChars: false, compoundDetection: false });
-    const result = await engine.scan(tmpDir);
-    const cryptoFindings = result.findings.filter(f => f.category === 'CRYPTOGRAPHIC_WEAKNESS');
-    expect(cryptoFindings.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it('should have CVSS score for CRYPTOGRAPHIC_WEAKNESS findings', async () => {
-    await fs.writeFile(path.join(tmpDir, 'hash.js'), 'const h = MD5(data);');
-    const engine = new ScanEngine({ ioc: false, entropy: false, hiddenChars: false, compoundDetection: false });
-    const result = await engine.scan(tmpDir);
-    const cryptoFindings = result.findings.filter(f => f.category === 'CRYPTOGRAPHIC_WEAKNESS');
-    expect(cryptoFindings.length).toBeGreaterThanOrEqual(1);
-    expect(cryptoFindings[0].cvss).not.toBeNull();
-    expect(cryptoFindings[0].cvss.adjustedScore).toBeGreaterThan(0);
-  });
-});
+// CRYPTOGRAPHIC_WEAKNESS category tests removed — CRYPTO* rules not in new.yaml
