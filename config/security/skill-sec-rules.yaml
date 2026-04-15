@@ -109,8 +109,16 @@ rules:
     description: 检测到 .env 文件读取，可能泄露环境变量
     patterns:
       - '(cat|less|head|tail|cp|mv|read|load|parse|open)[\s(].*\.env\b'
-      - 'process\.env'
       - 'os\.environ'
+
+  - id: DATA001b
+    category: DATA_EXFILTRATION
+    name: 环境变量访问
+    severity: LOW
+    confidence: 35
+    description: 检测到 process.env 访问（常见用法，仅供参考）
+    patterns:
+      - 'process\.env'
     fileTypes:
       - "*.js"
       - "*.ts"
@@ -843,7 +851,8 @@ rules:
     confidence: 75
     description: 检测到不安全的加密算法
     patterns:
-      - '\bDES\b'
+      - '(cipher|encrypt|decrypt|algorithm|createCipher).*\bDES\b'
+      - '\bDES\b.*(cipher|encrypt|decrypt|algorithm)'
       - '\b3DES\b'
       - '\bRC4\b'
       - '\bECB\b'
