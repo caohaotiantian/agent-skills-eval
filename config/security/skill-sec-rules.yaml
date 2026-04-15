@@ -1,7 +1,7 @@
 info:
   name: skill-security-rules
-  version: "2.0.0"
-  author: openCsiTool
+  version: "3.0.0"
+  author: caohaotian
   description: 企业级 Skill 安全扫描规则集
 
 categories:
@@ -29,6 +29,9 @@ categories:
   - id: SUPPLY_CHAIN
     name: 供应链安全
     severity_weight: 30
+  - id: CRYPTOGRAPHIC_WEAKNESS
+    name: 加密弱点
+    severity_weight: 15
 
 rules:
   - id: MAL001
@@ -104,9 +107,7 @@ rules:
       - 'credentials\.json'
       - 'creds\.json'
       - 'secrets\.json'
-      - '\.pem'
-      - '\.key'
-      - '\.p12'
+      - '(read|load|open|cat|cp)\s.*\.(pem|key|p12)\b'
       - 'id_rsa'
     fileTypes:
       - "*"
@@ -374,7 +375,7 @@ rules:
     category: SUPPLY_CHAIN
     name: 恶意调用链检测
     severity: HIGH
-    confidence: 50
+    confidence: 30
     description: 检测到可疑的调用链，可能滥用多个功能组合攻击
     patterns:
       - 'chain.*call.*exec'
@@ -644,12 +645,11 @@ rules:
     confidence: 60
     description: 检测到剪贴板数据访问，可能窃取敏感信息
     patterns:
-      - 'pyperclip'
-      - 'clipboard'
-      - 'navigator\.clipboard'
+      - 'pyperclip\.(copy|paste)'
+      - 'navigator\.clipboard\.(readText|writeText|read|write)'
       - 'document\.execCommand.*copy'
-      - 'xclip'
-      - 'xsel'
+      - 'xclip\s+-'
+      - 'xsel\s+'
       - 'pbcopy'
       - 'pbpaste'
     fileTypes:
@@ -720,11 +720,11 @@ rules:
     category: BACKDOOR
     name: 隐藏进程创建
     severity: CRITICAL
-    confidence: 65
+    confidence: 50
     description: 检测到隐藏进程或守护进程创建
     patterns:
       - 'nohup.*&'
-      - 'disown'
+      - 'disown\s+%'
       - 'setsid'
       - 'subprocess.*DETACHED'
       - 'ProcessBuilder.*redirect'
@@ -743,9 +743,9 @@ rules:
     description: 检测到AWS访问密钥
     patterns:
       - 'AKIA[0-9A-Z]{16}'
-      - 'aws_access_key_id'
-      - 'aws_secret_access_key'
       - 'ASIA[0-9A-Z]{16}'
+      - 'aws_access_key_id\s*[=:]\s*[''"][A-Z0-9]'
+      - 'aws_secret_access_key\s*[=:]\s*[''"][a-zA-Z0-9/+=]'
     fileTypes:
       - "*"
     suggestion: 移除AWS密钥，使用IAM角色或环境变量
@@ -817,7 +817,7 @@ rules:
     reference: https://owasp.org/www-community/attacks/Prototype_Pollution
 
   - id: CRYPTO001
-    category: MALICIOUS_CODE
+    category: CRYPTOGRAPHIC_WEAKNESS
     name: 弱加密算法
     severity: HIGH
     confidence: 75
@@ -835,7 +835,7 @@ rules:
     suggestion: 使用 AES-256-GCM 或 ChaCha20 替代弱加密算法
 
   - id: CRYPTO002
-    category: MALICIOUS_CODE
+    category: CRYPTOGRAPHIC_WEAKNESS
     name: 弱哈希算法
     severity: MEDIUM
     confidence: 65
@@ -850,20 +850,20 @@ rules:
     suggestion: 使用 SHA-256 或更强的哈希算法
 
   - id: CRYPTO003
-    category: MALICIOUS_CODE
+    category: CRYPTOGRAPHIC_WEAKNESS
     name: 不安全随机数
     severity: MEDIUM
-    confidence: 60
+    confidence: 35
     description: 检测到使用 Math.random() 生成安全相关随机数
     patterns:
-      - 'Math\.random\s*\('
+      - 'Math\.random\s*\(.*(?:token|key|secret|password|nonce|salt|iv|hash|crypt)'
     fileTypes:
       - "*.js"
       - "*.ts"
     suggestion: 使用 crypto.getRandomValues() 或 crypto.randomBytes() 替代
 
   - id: NET001
-    category: MALICIOUS_CODE
+    category: CRYPTOGRAPHIC_WEAKNESS
     name: HTTP明文传输
     severity: MEDIUM
     confidence: 70
@@ -903,22 +903,6 @@ rules:
       - "*.ts"
       - "*.py"
     suggestion: 序列化前移除敏感字段，使用脱敏处理
-
-  - id: WEB006
-    category: WEB_SECURITY
-    name: React dangerouslySetInnerHTML
-    severity: MEDIUM
-    confidence: 75
-    description: 检测到 React dangerouslySetInnerHTML 使用
-    patterns:
-      - 'dangerouslySetInnerHTML'
-    fileTypes:
-      - "*.jsx"
-      - "*.tsx"
-      - "*.js"
-      - "*.ts"
-    suggestion: 使用 DOMPurify 对内容进行净化
-    reference: https://owasp.org/www-community/attacks/xss/
 
   - id: WEB007
     category: WEB_SECURITY
