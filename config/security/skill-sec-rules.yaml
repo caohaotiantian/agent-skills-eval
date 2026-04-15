@@ -781,3 +781,172 @@ rules:
     fileTypes:
       - "*"
     suggestion: 移除连接串中的密码，使用环境变量或配置管理
+
+  # ==================== Migrated from static-patterns.json ====================
+
+  - id: INJ001
+    category: MALICIOUS_CODE
+    name: 原型链污染-__proto__
+    severity: HIGH
+    confidence: 85
+    description: 检测到 __proto__ 属性访问或赋值，可能导致原型链污染
+    patterns:
+      - '\.__proto__\s*[.\[=]'
+    fileTypes:
+      - "*.js"
+      - "*.ts"
+      - "*.jsx"
+      - "*.tsx"
+    suggestion: 使用 Object.create(null) 或 Map 替代，避免原型链污染
+    reference: https://owasp.org/www-community/attacks/Prototype_Pollution
+
+  - id: INJ002
+    category: MALICIOUS_CODE
+    name: 原型链污染-constructor.prototype
+    severity: HIGH
+    confidence: 85
+    description: 检测到 constructor.prototype 操作，可能导致原型链污染
+    patterns:
+      - '\.constructor\.prototype\s*[.\[=]'
+    fileTypes:
+      - "*.js"
+      - "*.ts"
+      - "*.jsx"
+      - "*.tsx"
+    suggestion: 使用 Object.create(null) 或 Map 替代
+    reference: https://owasp.org/www-community/attacks/Prototype_Pollution
+
+  - id: CRYPTO001
+    category: MALICIOUS_CODE
+    name: 弱加密算法
+    severity: HIGH
+    confidence: 75
+    description: 检测到不安全的加密算法
+    patterns:
+      - '\bDES\b'
+      - '\b3DES\b'
+      - '\bRC4\b'
+      - '\bECB\b'
+      - '\bPKCS1v1_5\b'
+    fileTypes:
+      - "*.js"
+      - "*.ts"
+      - "*.py"
+    suggestion: 使用 AES-256-GCM 或 ChaCha20 替代弱加密算法
+
+  - id: CRYPTO002
+    category: MALICIOUS_CODE
+    name: 弱哈希算法
+    severity: MEDIUM
+    confidence: 65
+    description: 检测到不安全的哈希算法
+    patterns:
+      - '\bMD5\b'
+      - '\bSHA1\b'
+    fileTypes:
+      - "*.js"
+      - "*.ts"
+      - "*.py"
+    suggestion: 使用 SHA-256 或更强的哈希算法
+
+  - id: CRYPTO003
+    category: MALICIOUS_CODE
+    name: 不安全随机数
+    severity: MEDIUM
+    confidence: 60
+    description: 检测到使用 Math.random() 生成安全相关随机数
+    patterns:
+      - 'Math\.random\s*\('
+    fileTypes:
+      - "*.js"
+      - "*.ts"
+    suggestion: 使用 crypto.getRandomValues() 或 crypto.randomBytes() 替代
+
+  - id: NET001
+    category: MALICIOUS_CODE
+    name: HTTP明文传输
+    severity: MEDIUM
+    confidence: 70
+    description: 检测到 HTTP 非 TLS 连接（排除 localhost）
+    patterns:
+      - 'http://(?!localhost|127\.0\.0\.1)'
+    fileTypes:
+      - "*.js"
+      - "*.ts"
+      - "*.py"
+    suggestion: 使用 HTTPS 替代 HTTP
+
+  - id: DATA008
+    category: DATA_EXFILTRATION
+    name: 敏感数据日志泄露
+    severity: MEDIUM
+    confidence: 70
+    description: 检测到日志中可能输出敏感数据
+    patterns:
+      - 'console\.(log|info)\s*\([^)]*(password|secret|token|key|credential)'
+    fileTypes:
+      - "*.js"
+      - "*.ts"
+    suggestion: 不要在日志中输出敏感数据，使用脱敏处理
+
+  - id: DATA009
+    category: DATA_EXFILTRATION
+    name: 敏感数据序列化
+    severity: HIGH
+    confidence: 75
+    description: 检测到敏感数据可能被序列化输出
+    patterns:
+      - 'JSON\.stringify\s*\([^)]*(password|secret|token|key)'
+      - 'error\s*\(.*password'
+    fileTypes:
+      - "*.js"
+      - "*.ts"
+      - "*.py"
+    suggestion: 序列化前移除敏感字段，使用脱敏处理
+
+  - id: WEB006
+    category: WEB_SECURITY
+    name: React dangerouslySetInnerHTML
+    severity: MEDIUM
+    confidence: 75
+    description: 检测到 React dangerouslySetInnerHTML 使用
+    patterns:
+      - 'dangerouslySetInnerHTML'
+    fileTypes:
+      - "*.jsx"
+      - "*.tsx"
+      - "*.js"
+      - "*.ts"
+    suggestion: 使用 DOMPurify 对内容进行净化
+    reference: https://owasp.org/www-community/attacks/xss/
+
+  - id: WEB007
+    category: WEB_SECURITY
+    name: SQL字符串拼接
+    severity: HIGH
+    confidence: 75
+    description: 检测到 SQL 插值拼接，可能导致注入
+    patterns:
+      - '\bsql\s*Interpolat'
+      - 'interpolate.*sql'
+    fileTypes:
+      - "*.js"
+      - "*.ts"
+      - "*.py"
+    suggestion: 使用参数化查询，避免 SQL 字符串拼接
+    reference: https://owasp.org/www-community/attacks/SQL_Injection
+
+  - id: WEB008
+    category: WEB_SECURITY
+    name: 用户输入的文件操作
+    severity: HIGH
+    confidence: 80
+    description: 检测到文件 I/O 使用用户可控路径
+    patterns:
+      - '(?:readFile|writeFile|createReadStream|createWriteStream|open)\s*\([^)]*(?:req\.|params\.|query\.|body\.)'
+      - 'import\s*\(\s*(?:req\.|params\.|query\.|body\.)'
+    fileTypes:
+      - "*.js"
+      - "*.ts"
+    suggestion: 验证和规范化文件路径，使用白名单机制
+    reference: https://owasp.org/www-community/attacks/Path_Traversal

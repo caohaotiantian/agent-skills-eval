@@ -1,5 +1,5 @@
 const path = require('path');
-const { loadYAMLRules, loadJSONPatterns, mergeRules, loadAllRules } = require('../../../lib/validation/engine/rule-loader');
+const { loadYAMLRules, mergeRules, loadAllRules } = require('../../../lib/validation/engine/rule-loader');
 
 const FIXTURE_YAML = path.join(__dirname, '..', '..', 'fixtures', 'test-rules.yaml');
 
@@ -60,36 +60,19 @@ describe('loadYAMLRules', () => {
   });
 });
 
-describe('loadJSONPatterns', () => {
-  it('should load and convert static-patterns.json into unified rules', () => {
-    const jsonPath = path.join(__dirname, '..', '..', '..', 'config', 'security', 'static-patterns.json');
-    const rules = loadJSONPatterns(jsonPath);
-    expect(rules.length).toBeGreaterThan(0);
-    const first = rules[0];
-    expect(first.id).toBeDefined();
-    expect(first.category).toBeDefined();
-    expect(first.patterns[0]).toBeInstanceOf(RegExp);
-    expect(first.source).toBe('json');
-    expect(first.confidence).toBe(75);
-  });
-
-  it('should return empty array for nonexistent file', () => {
-    expect(loadJSONPatterns('/nonexistent/path.json')).toEqual([]);
-  });
-});
-
 describe('mergeRules', () => {
-  it('should deduplicate by ID with YAML winning over JSON', () => {
-    const yamlRules = [{ id: 'DUP001', source: 'yaml', name: 'from yaml' }];
-    const jsonRules = [{ id: 'DUP001', source: 'json', name: 'from json' }];
-    const hardcodedRules = [{ id: 'DUP001', source: 'hardcoded', name: 'from hardcoded' }];
-    const merged = mergeRules(yamlRules, jsonRules, hardcodedRules);
+  it('should deduplicate by ID', () => {
+    const yamlRules = [
+      { id: 'DUP001', source: 'yaml', name: 'first' },
+      { id: 'DUP001', source: 'yaml', name: 'second' }
+    ];
+    const merged = mergeRules(yamlRules);
     expect(merged).toHaveLength(1);
-    expect(merged[0].source).toBe('yaml');
+    expect(merged[0].name).toBe('second');
   });
 
   it('should include all rules when IDs are unique', () => {
-    const merged = mergeRules([{ id: 'Y1', source: 'yaml' }], [{ id: 'J1', source: 'json' }], []);
+    const merged = mergeRules([{ id: 'Y1', source: 'yaml' }, { id: 'Y2', source: 'yaml' }]);
     expect(merged).toHaveLength(2);
   });
 });
