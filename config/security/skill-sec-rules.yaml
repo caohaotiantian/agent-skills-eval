@@ -35,9 +35,10 @@ rules:
     category: MALICIOUS_CODE
     name: 危险函数-eval
     severity: CRITICAL
+    confidence: 85
     description: 检测到 eval 函数调用，可能执行任意代码
     patterns:
-      - 'eval\s*\('
+      - '\beval\s*\('
       - 'eval\s*`'
       - 'new\s+Function\s*\('
     fileTypes:
@@ -51,9 +52,10 @@ rules:
     category: MALICIOUS_CODE
     name: 危险函数-exec
     severity: CRITICAL
+    confidence: 85
     description: 检测到 exec 函数调用，可能执行系统命令
     patterns:
-      - 'exec\s*\('
+      - '(?<!\.)exec\s*\('
       - 'execfile\s*\('
       - '__import__\s*\('
     fileTypes:
@@ -64,10 +66,11 @@ rules:
     category: MALICIOUS_CODE
     name: 危险函数-system
     severity: CRITICAL
+    confidence: 80
     description: 检测到 system 函数调用，可能执行系统命令
     patterns:
-      - 'system\s*\('
-      - 'popen\s*\('
+      - '\bsystem\s*\('
+      - '\bpopen\s*\('
       - 'subprocess\.call\s*\(.*shell\s*=\s*True'
     fileTypes:
       - "*.py"
@@ -75,31 +78,16 @@ rules:
       - "*.c"
     suggestion: 避免直接执行系统命令，使用安全的 API 替代
 
-  - id: MAL004
-    category: MALICIOUS_CODE
-    name: 动态代码执行
-    severity: HIGH
-    description: 检测到动态代码执行模式
-    patterns:
-      - 'compile\s*\('
-      - 'execjs\.'
-      - 'vm\.runInNewContext'
-    fileTypes:
-      - "*.py"
-      - "*.js"
-      - "*.ts"
-    suggestion: 审查动态代码执行的必要性，确保代码来源可信
-
   - id: DATA001
     category: DATA_EXFILTRATION
     name: 敏感文件读取-env
     severity: HIGH
+    confidence: 60
     description: 检测到 .env 文件读取，可能泄露环境变量
     patterns:
-      - '\.env'
+      - '(cat|less|head|tail|cp|mv|read|load|parse|open)[\s(].*\.env\b'
       - 'process\.env'
       - 'os\.environ'
-      - 'dotenv\.load'
     fileTypes:
       - "*.js"
       - "*.ts"
@@ -110,6 +98,7 @@ rules:
     category: DATA_EXFILTRATION
     name: 敏感文件读取-credentials
     severity: CRITICAL
+    confidence: 90
     description: 检测到凭证文件读取
     patterns:
       - 'credentials\.json'
@@ -127,6 +116,7 @@ rules:
     category: DATA_EXFILTRATION
     name: 网络请求外传
     severity: HIGH
+    confidence: 70
     description: 检测到可疑的网络请求，可能外传数据
     patterns:
       - 'fetch\s*\(.*password'
@@ -145,12 +135,12 @@ rules:
     category: DATA_EXFILTRATION
     name: 浏览器数据访问
     severity: HIGH
+    confidence: 60
     description: 检测到浏览器敏感数据访问
     patterns:
-      - 'localStorage'
-      - 'sessionStorage'
+      - "localStorage\\.(get|set)Item\\s*\\(\\s*['\"]*(secret|token|password|key|auth|cred)"
+      - "sessionStorage\\.(get|set)Item\\s*\\(\\s*['\"]*(secret|token|password|key|auth|cred)"
       - 'document\.cookie'
-      - 'indexedDB'
     fileTypes:
       - "*.js"
       - "*.ts"
@@ -160,6 +150,7 @@ rules:
     category: PRIVILEGE_ABUSE
     name: 危险命令-rm
     severity: CRITICAL
+    confidence: 90
     description: 检测到 rm -rf 命令，可能删除重要文件
     patterns:
       - 'rm\s+-rf'
@@ -176,6 +167,7 @@ rules:
     category: PRIVILEGE_ABUSE
     name: 权限修改-chmod
     severity: HIGH
+    confidence: 85
     description: 检测到 chmod 777，可能造成权限漏洞
     patterns:
       - 'chmod\s+777'
@@ -190,11 +182,11 @@ rules:
     category: PRIVILEGE_ABUSE
     name: sudo命令使用
     severity: MEDIUM
+    confidence: 55
     description: 检测到 sudo 命令使用
     patterns:
-      - 'sudo\s+'
-      - 'sudo\s+-i'
-      - 'sudo\s+su'
+      - 'sudo\s+(rm|chmod|chown|mv|dd|mkfs|fdisk|kill)\b'
+      - 'sudo\s+(su|-(i|s))\b'
     fileTypes:
       - "*.sh"
     suggestion: 审查 sudo 使用是否必要，记录所有提权操作
@@ -203,6 +195,7 @@ rules:
     category: BACKDOOR
     name: 反向Shell
     severity: CRITICAL
+    confidence: 90
     description: 检测到反向 Shell 代码
     patterns:
       - 'nc\s+-.*-e'
@@ -221,12 +214,11 @@ rules:
     category: BACKDOOR
     name: 持久化机制-crontab
     severity: HIGH
+    confidence: 60
     description: 检测到 crontab 操作
     patterns:
-      - 'crontab'
-      - 'cron\.'
+      - 'crontab\s+-[elr]'
       - '/etc/cron'
-      - 'cron\.tab'
     fileTypes:
       - "*.sh"
       - "*.py"
@@ -236,6 +228,7 @@ rules:
     category: BACKDOOR
     name: 启动项修改
     severity: HIGH
+    confidence: 70
     description: 检测到启动项修改
     patterns:
       - 'LaunchAgents'
@@ -252,6 +245,8 @@ rules:
     category: PROMPT_INJECTION
     name: 系统提示词覆盖
     severity: HIGH
+    confidence: 80
+    markdownConfidence: 45
     description: 检测到系统提示词覆盖风险
     patterns:
       - 'ignore previous'
@@ -271,13 +266,15 @@ rules:
     category: PROMPT_INJECTION
     name: 越狱提示词
     severity: HIGH
+    confidence: 75
+    markdownConfidence: 40
     description: 检测到越狱提示词模式
     patterns:
       - 'DAN\s*:'
       - 'do anything now'
       - 'jailbreak'
-      - 'bypass'
-      - 'override'
+      - '(must|should|please|now)\s+bypass'
+      - 'override\s+(all|previous|system|instructions|rules)'
       - '不受限制'
     fileTypes:
       - "*.md"
@@ -288,6 +285,7 @@ rules:
     category: DEPENDENCY
     name: 可疑依赖安装
     severity: HIGH
+    confidence: 85
     description: 检测到可疑的依赖安装命令
     patterns:
       - 'curl.*\|.*bash'
@@ -301,25 +299,11 @@ rules:
       - "*.md"
     suggestion: 不要从网络直接执行安装脚本，使用官方包管理器
 
-  - id: DEP002
-    category: DEPENDENCY
-    name: 未指定版本的依赖
-    severity: LOW
-    description: 检测到未指定版本的依赖安装
-    patterns:
-      - 'pip install [a-zA-Z]'
-      - 'npm install [a-zA-Z]'
-      - 'yarn add [a-zA-Z]'
-    fileTypes:
-      - "*.sh"
-      - "requirements.txt"
-      - "package.json"
-    suggestion: 建议指定依赖版本，避免供应链攻击
-
   - id: OTHER001
     category: MALICIOUS_CODE
     name: 硬编码密钥
     severity: CRITICAL
+    confidence: 85
     description: 检测到硬编码的密钥或令牌
     patterns:
       - 'api_key\s*=\s*[\"''][^\"'']{20,}[\"'']'
@@ -338,12 +322,12 @@ rules:
     category: MALICIOUS_CODE
     name: 远程代码加载-Rug Pull
     severity: CRITICAL
+    confidence: 60
     description: 检测到远程配置加载或动态代码加载，可能是Rug Pull攻击
     patterns:
       - 'fetch.*config.*from'
       - 'load.*remote.*config'
       - 'import.*from.*http'
-      - 'require.*http.*'
       - '__import__.*http'
       - 'dynamic.*load.*url'
       - 'eval.*response'
@@ -362,6 +346,7 @@ rules:
     category: SUPPLY_CHAIN
     name: 拼写混淆攻击-Typosquatting
     severity: HIGH
+    confidence: 80
     description: 检测到与知名工具/库相似的名称，可能是拼写混淆攻击
     patterns:
       - 'requets'
@@ -389,6 +374,7 @@ rules:
     category: SUPPLY_CHAIN
     name: 恶意调用链检测
     severity: HIGH
+    confidence: 50
     description: 检测到可疑的调用链，可能滥用多个功能组合攻击
     patterns:
       - 'chain.*call.*exec'
@@ -407,6 +393,8 @@ rules:
     category: PROMPT_INJECTION
     name: 间接提示词注入
     severity: HIGH
+    confidence: 65
+    markdownConfidence: 35
     description: 检测到间接提示词注入模式，通过外部数据注入恶意指令
     patterns:
       - '\{\{.*user.*input.*\}\}'
@@ -427,6 +415,8 @@ rules:
     category: PROMPT_INJECTION
     name: 多语言绕过注入
     severity: MEDIUM
+    confidence: 60
+    markdownConfidence: 30
     description: 检测到使用多语言编码绕过的提示词注入
     patterns:
       - '忽略.*指令'
@@ -447,6 +437,7 @@ rules:
     category: PROMPT_INJECTION
     name: 编码绕过注入
     severity: MEDIUM
+    confidence: 65
     description: 检测到使用编码技术绕过过滤的提示词注入
     patterns:
       - 'base64.*decode'
@@ -467,6 +458,7 @@ rules:
     category: WEB_SECURITY
     name: SQL注入风险
     severity: CRITICAL
+    confidence: 80
     description: 检测到SQL注入风险模式
     patterns:
       - 'SELECT.*FROM.*WHERE.*\+'
@@ -489,6 +481,7 @@ rules:
     category: WEB_SECURITY
     name: XSS跨站脚本风险
     severity: HIGH
+    confidence: 75
     description: 检测到XSS跨站脚本风险
     patterns:
       - 'innerHTML\s*='
@@ -511,6 +504,7 @@ rules:
     category: WEB_SECURITY
     name: SSRF服务端请求伪造
     severity: HIGH
+    confidence: 65
     description: 检测到SSRF服务端请求伪造风险
     patterns:
       - 'fetch\s*\(.*request'
@@ -532,15 +526,13 @@ rules:
     category: WEB_SECURITY
     name: 路径遍历风险
     severity: HIGH
+    confidence: 70
     description: 检测到路径遍历攻击风险
     patterns:
-      - '\.\.\\'
-      - '\.\./'
-      - 'open\s*\(.*\+'
-      - 'readFile.*\+'
-      - 'file_get_contents.*\$'
-      - 'os\.path\.join.*input'
-      - 'pathlib.*input'
+      - '\.\.\/(etc|passwd|shadow|proc|windows|boot|sys|var)'
+      - '\.\.\\\\.*(etc|passwd|shadow|windows|boot|sys)'
+      - 'open\s*\(.*\+.*(request|input|param|query|user)'
+      - 'readFile\s*\(.*\+.*(request|input|param|query|user)'
     fileTypes:
       - "*.py"
       - "*.js"
@@ -553,6 +545,7 @@ rules:
     category: WEB_SECURITY
     name: XXE外部实体注入
     severity: HIGH
+    confidence: 80
     description: 检测到XXE外部实体注入风险
     patterns:
       - '<!ENTITY'
@@ -573,34 +566,32 @@ rules:
     category: MALICIOUS_CODE
     name: 反引号命令替换
     severity: HIGH
+    confidence: 70
     description: 检测到反引号命令替换，可能执行任意命令
     patterns:
-      - '`.*`'
-      - '\$\(.*\)'
-      - 'subprocess.*shell=True'
-      - 'child_process\.exec'
-      - 'child_process\.spawn.*shell'
+      - 'subprocess\..*shell\s*=\s*True'
+      - 'child_process\.exec\b'
+      - 'child_process\.spawn\(.*shell'
     fileTypes:
       - "*.py"
       - "*.js"
       - "*.ts"
-      - "*.sh"
     suggestion: 避免使用shell=True，使用参数列表形式执行命令
 
   - id: MAL006
     category: MALICIOUS_CODE
     name: 管道命令链注入
     severity: HIGH
+    confidence: 75
     description: 检测到管道命令链，可能被利用注入恶意命令
     patterns:
-      - '\|\s*sh'
-      - '\|\s*bash'
+      - '\|\s*sh\b'
+      - '\|\s*bash\b'
       - '\|\s*python'
       - '\|\s*perl'
       - '\|\s*nc'
-      - '\|\s*curl'
+      - '\|\s*curl\s+-[dX]'
       - ';\s*rm'
-      - '&&\s*curl'
       - '\|\|\s*wget'
     fileTypes:
       - "*.sh"
@@ -613,6 +604,7 @@ rules:
     category: DATA_EXFILTRATION
     name: DNS隐蔽通道
     severity: HIGH
+    confidence: 75
     description: 检测到DNS隐蔽通道数据外传风险
     patterns:
       - 'dns\.query.*encode'
@@ -631,6 +623,7 @@ rules:
     category: DATA_EXFILTRATION
     name: Base64编码传输
     severity: MEDIUM
+    confidence: 55
     description: 检测到可疑的Base64编码数据传输
     patterns:
       - 'base64.*b64encode.*send'
@@ -648,6 +641,7 @@ rules:
     category: DATA_EXFILTRATION
     name: 剪贴板数据访问
     severity: HIGH
+    confidence: 60
     description: 检测到剪贴板数据访问，可能窃取敏感信息
     patterns:
       - 'pyperclip'
@@ -670,6 +664,7 @@ rules:
     category: SUPPLY_CHAIN
     name: 可疑npm包引用
     severity: HIGH
+    confidence: 70
     description: 检测到可疑的npm包引用模式
     patterns:
       - 'npm.*install.*--force'
@@ -688,6 +683,7 @@ rules:
     category: SUPPLY_CHAIN
     name: 可疑pip包引用
     severity: HIGH
+    confidence: 70
     description: 检测到可疑的pip包引用模式
     patterns:
       - 'pip.*install.*--index-url.*http:'
@@ -706,6 +702,7 @@ rules:
     category: SUPPLY_CHAIN
     name: Git配置篡改
     severity: MEDIUM
+    confidence: 70
     description: 检测到Git配置修改，可能影响代码完整性
     patterns:
       - 'git config.*user\.'
@@ -723,13 +720,12 @@ rules:
     category: BACKDOOR
     name: 隐藏进程创建
     severity: CRITICAL
+    confidence: 65
     description: 检测到隐藏进程或守护进程创建
     patterns:
       - 'nohup.*&'
       - 'disown'
       - 'setsid'
-      - 'daemonize'
-      - 'fork.*detach'
       - 'subprocess.*DETACHED'
       - 'ProcessBuilder.*redirect'
     fileTypes:
@@ -738,29 +734,12 @@ rules:
       - "*.java"
     suggestion: 审查后台进程创建的必要性，防止持久化后门
 
-  - id: BACK005
-    category: BACKDOOR
-    name: 隐藏文件创建
-    severity: HIGH
-    description: 检测到隐藏文件创建
-    patterns:
-      - '\./\.'
-      - 'touch\s+\.'
-      - 'mkdir\s+\..*'
-      - 'echo.*>\s*\..*'
-      - 'writeFile.*\..*'
-      - 'open.*\..*w'
-    fileTypes:
-      - "*.sh"
-      - "*.py"
-      - "*.js"
-    suggestion: 检查隐藏文件创建行为，防止隐藏恶意文件
-
   # ==================== 增强密钥泄露检测 ====================
   - id: KEY001
     category: DATA_EXFILTRATION
     name: AWS密钥泄露
     severity: CRITICAL
+    confidence: 95
     description: 检测到AWS访问密钥
     patterns:
       - 'AKIA[0-9A-Z]{16}'
@@ -775,6 +754,7 @@ rules:
     category: DATA_EXFILTRATION
     name: 私钥文件泄露
     severity: CRITICAL
+    confidence: 95
     description: 检测到私钥文件内容
     patterns:
       - '-----BEGIN.*PRIVATE KEY-----'
@@ -789,6 +769,7 @@ rules:
     category: DATA_EXFILTRATION
     name: 数据库连接串泄露
     severity: CRITICAL
+    confidence: 90
     description: 检测到数据库连接字符串包含密码
     patterns:
       - 'mysql://.*:.*@'
