@@ -1,0 +1,29 @@
+# Whitelist configuration — files, domains, and rule overrides to reduce false positives
+filePatterns:
+  - "README.md"
+  - "README_*.md"
+  - "CHANGELOG.md"
+  - "CONTRIBUTING.md"
+  - "LICENSE*"
+  - "docs/**/*.md"
+  - "examples/**/*"
+  - "*.lock"
+  - "package-lock.json"
+  - "yarn.lock"
+  - "pnpm-lock.yaml"
+
+trustedDomains:
+  - "api.anthropic.com"
+  - "api.openai.com"
+  - "api.github.com"
+  - "github.com"
+  - "npmjs.com"
+  - "registry.npmjs.org"
+  - "pypi.org"
+  - "localhost"
+  - "127.0.0.1"
+  - "example.com"
+
+ruleOverrides:
+  disabled: []
+  severityOverrides: {}
