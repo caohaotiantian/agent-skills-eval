@@ -12,7 +12,7 @@ module.exports = {
   // Security assessment
   security: {
     enabled: true,        // Set to false to skip security dimension entirely
-    llmJudge: false,      // LLM-as-Judge for semantic security analysis (requires LLM config)
+    llmJudge: true,       // LLM-as-Judge for semantic security analysis (requires OPENAI_API_KEY or compatible LLM config)
     rulesFile: null,      // Path to YAML rules file (auto-discovers skill-sec-rules.yaml in project root)
     ioc: true,            // Enable IOC threat intelligence matching
     iocDatabase: null,    // Custom IOC database path (defaults to config/security/ioc-database.json)
@@ -26,8 +26,8 @@ module.exports = {
 
   // Score thresholds
   thresholds: {
-    passing: 70,          // Minimum score (%) for passing — used in security gate, pass/fail counts
-    warning: 50           // Score (%) below which to show warning color in reports
+    passing: 80,          // Minimum score (%) for passing — used in security gate, pass/fail counts
+    warning: 60           // Score (%) below which to show warning color in reports
   },
 
   // Output directories — all generated data goes under output/ (gitignored)
@@ -48,7 +48,7 @@ module.exports = {
 
   // LLM-as-Judge response quality grading
   grading: {
-    enabled: false,       // Enable LLM grading of agent responses (requires LLM config)
+    enabled: true,       // Enable LLM grading of agent responses (requires LLM config)
     passingScore: 6       // Minimum overall score (1-10) for a test to pass
   },
 

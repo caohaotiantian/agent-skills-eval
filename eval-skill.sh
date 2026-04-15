@@ -13,6 +13,7 @@ BACKEND=""
 OUTPUT_DIR=""
 FORCE_BUILD=false
 USE_LLM=false
+LLM_JUDGE=""
 SKILL_PATH=""
 
 usage() {
@@ -28,6 +29,7 @@ Options:
   -o, --output DIR    Output directory (default: $DEFAULT_OUTPUT)
   --build             Force rebuild Docker image
   --llm               Enable LLM-powered test generation
+  --no-llm-judge      Disable LLM-as-Judge security analysis (enabled by default)
   -h, --help          Show this help
 
 Examples:
@@ -63,6 +65,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --llm)
       USE_LLM=true
+      shift
+      ;;
+    --no-llm-judge)
+      LLM_JUDGE=false
       shift
       ;;
     -h|--help)
@@ -166,6 +172,10 @@ PIPELINE_ARGS=("pipeline" "-s" "$SKILL_NAME" "-b" "$BACKEND" "-f" "html" "--outp
 
 if [[ "$USE_LLM" == "true" ]]; then
   PIPELINE_ARGS+=("--llm")
+fi
+
+if [[ "$LLM_JUDGE" == "false" ]]; then
+  PIPELINE_ARGS+=("--no-llm-judge")
 fi
 
 # ---- Run container ----

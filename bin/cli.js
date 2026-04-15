@@ -508,6 +508,8 @@ program
   .option('-b, --backend <name>', 'Agent backend for dynamic execution', 'mock')
   .option('--llm', 'Use LLM for test prompt generation')
   .option('--no-llm', 'Use template-based generation (default)')
+  .option('--llm-judge', 'Enable LLM-as-Judge for security analysis (default: on)')
+  .option('--no-llm-judge', 'Disable LLM-as-Judge security analysis')
   .option('-f, --format <format>', 'Report format (html, markdown, json)', 'html')
   .option('-o, --output <file>', 'Report output path')
   .option('--output-dir <dir>', 'Output directory for results')
@@ -536,6 +538,7 @@ program
         backends,
         concurrency: options.concurrency,
         useLLM: options.llm === true,
+        llmJudge: options.llmJudge,
         format: options.format,
         output: options.output,
         outputDir: options.outputDir,

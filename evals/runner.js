@@ -459,9 +459,9 @@ async function runEvaluation(skillName, options = {}) {
       }
     }
 
-    // LLM-as-judge grading (optional)
+    // LLM-as-judge grading (optional — skip for mock backend since responses aren't real)
     let gradingResult = null;
-    if (config.grading?.enabled) {
+    if (config.grading?.enabled && backendName !== 'mock') {
       const { gradeWithLLM } = require('../lib/grading/llm-judge');
       const agentResponse = messages.map(m => m.content).join('\n');
       gradingResult = await gradeWithLLM({

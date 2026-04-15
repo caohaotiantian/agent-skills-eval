@@ -21,6 +21,7 @@ describe('Pipeline Integration', () => {
       platform: 'claude-code',
       backend: 'mock',
       useLLM: false,
+      llmJudge: false,
       format: 'html',
       output: reportPath,
       verbose: false
@@ -49,6 +50,7 @@ describe('Pipeline Integration', () => {
     const result = await runPipeline({
       platform: 'claude-code',
       backend: 'mock',
+      llmJudge: false,
       dryRun: true
     });
 
@@ -66,6 +68,7 @@ describe('Pipeline Integration', () => {
     const result = await runPipeline({
       platform: 'claude-code',
       backend: 'mock',
+      llmJudge: false,
       skipDynamic: true,
       format: 'html',
       output: reportPath
