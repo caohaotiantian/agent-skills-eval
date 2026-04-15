@@ -109,18 +109,22 @@ rules:
     description: 检测到 .env 文件读取，可能泄露环境变量
     patterns:
       - '(cat|less|head|tail|cp|mv|read|load|parse|open)[\s(].*\.env\b'
-      - 'os\.environ'
+    fileTypes:
+      - "*.js"
+      - "*.ts"
+      - "*.py"
+      - "*.sh"
+    suggestion: 不要直接读取 .env 文件，使用安全的配置管理
 
   - id: DATA001b
     category: DATA_EXFILTRATION
     name: 环境变量访问
     severity: LOW
     confidence: 35
-    description: 检测到 process.env 访问（常见用法，仅供参考）
+    description: 检测到环境变量访问（常见用法，仅供参考）
     patterns:
       - 'process\.env'
-    fileTypes:
-      - "*.js"
+      - 'os\.environ'
       - "*.ts"
       - "*.py"
     suggestion: 不要直接读取 .env 文件，使用安全的配置管理
