@@ -39,7 +39,7 @@
 - **多后端动态执行**：通过 5 种智能体后端（mock、OpenAI 兼容、Codex、Claude Code、OpenCode）运行提示词
 - **LLM 增强测试生成**：基于模板或 LLM 驱动的提示词生成，支持任意 OpenAI 兼容 API（本地或远程）
 - **基于 Trace 的安全分析**：8 类安全检查，分析智能体的实际行为（工具调用、命令、文件访问、输出内容），而非仅分析提示词文本
-- **YAML 驱动安全规则**：从 YAML 文件加载企业级安全规则，支持按文件类型过滤、严重性权重和置信度评分——覆盖 8 个类别（恶意代码、数据泄露、权限滥用、后门、Prompt 注入、依赖安全、Web 安全、供应链安全）
+- **YAML 驱动安全规则**：`skill-sec-rules.yaml` 作为唯一规则源，支持按规则置信度评分、Markdown 感知扫描（代码块提取）、白名单系统和动态评估标准——覆盖 9 个类别（恶意代码、数据泄露、权限滥用、后门、Prompt 注入、依赖安全、Web 安全、供应链安全、加密弱点）
 - **CVSS 3.1 评分**：行业标准漏洞评分，为每个类别预建向量模板，支持基于置信度的分数调整
 - **逐文件安全扫描**：逐行扫描并追踪文件路径和行号，支持 glob 模式的文件类型过滤和可配置的文件大小/数量限制
 - **基于熵的混淆检测**：Shannon 熵分析标记具有可疑高熵的行，可能表示混淆的有效载荷或加密恶意软件
@@ -100,7 +100,7 @@
 │  ├── security.js     → 安全门面（向后兼容 API）                       │
 │  ├── engine/                                                         │
 │  │   ├── index.js    → ScanEngine：逐文件扫描编排器                   │
-│  │   ├── rule-loader.js → YAML + JSON 规则加载与合并                  │
+│  │   ├── rule-loader.js → YAML 规则 + 白名单加载                      │
 │  │   ├── cvss.js     → CVSS 3.1 计算器（含置信度调整）                │
 │  │   ├── ioc.js      → IOC 威胁情报匹配器                            │
 │  │   └── findings.js → Finding 数据结构（含 CVSS 严重性）             │
@@ -118,7 +118,7 @@
 │      ├── 流程目标 (4 项标准)                                           │
 │      ├── 风格目标 (5 项标准)                                           │
 │      ├── 效率目标 (5 项标准)                                           │
-│      └── 安全评估 (11 项标准)                                          │
+│      └── 安全评估 (动态标准，来自 YAML)                                │
 ├──────────────────────────────────────────────────────────────────────┤
 │  测试生成 (lib/skills/generating/)                                    │
 │  ├── analyzer.js         → 技能分析与元数据提取                        │
@@ -158,11 +158,11 @@
 │  配置 (config/)                                                      │
 │  ├── agent-skills-eval.config.js → 项目级配置                         │
 │  ├── rubrics/                    → JSON Schema 评分量规               │
-│  ├── security/                   → 安全模式与规则                     │
-│  │   ├── static-patterns.json   → 静态分析模式                        │
+│  ├── security/                   → 安全规则与配置                     │
+│  │   ├── skill-sec-rules.yaml   → 所有安全规则 + 分类 + 检测器        │
+│  │   ├── whitelist.yaml         → 文件/域名/规则排除配置              │
 │  │   ├── trace-patterns.json    → Trace 检测模式                      │
-│  │   ├── ioc-database.json      → IOC 威胁情报数据库                  │
-│  │   └── skill-sec-rules.yaml   → YAML 安全规则（gitignored）         │
+│  │   └── ioc-database.json      → IOC 威胁情报数据库                  │
 │  └── evals/                      → 基准定义                          │
 ├──────────────────────────────────────────────────────────────────────┤
 │  报告 (lib/skills/reporting/)                                         │
@@ -651,23 +651,31 @@ agent-skills-eval gen writing-skills --llm
 | efficient-dependencies | 2 | 最少依赖（<20 生产，<30 开发） |
 | no-unnecessary-commands | 2 | 无不必要的 shell 命令 |
 
-### 5. 安全评估（11 项标准）- 引擎驱动
+### 5. 安全评估 - 引擎驱动（动态标准）
 
-通过安全引擎评估安全态势，使用 YAML/JSON 规则、熵检测、隐藏字符检测、IOC 匹配和复合攻击分析。每个标准映射到引擎类别或检测器，配合 CVSS 3.1 评分。
+通过 ScanEngine 评估安全态势，使用 YAML 规则、熵检测、隐藏字符检测、IOC 匹配和复合攻击分析。**标准从 `skill-sec-rules.yaml` 动态生成** — 在 YAML 中添加分类或检测器会自动创建新的评估标准。
 
-| 标准 | 权重 | 引擎来源 | 描述 |
-|------|------|----------|------|
-| no-hardcoded-secrets | 3 | DATA_EXFILTRATION | 无硬编码的 API 密钥、令牌、密码、凭证 |
-| no-malicious-code | 3 | MALICIOUS_CODE | 无 eval()、exec()、动态代码执行、Rug Pull 模式 |
-| no-prompt-injection | 2 | PROMPT_INJECTION | 无系统提示词覆盖、越狱、间接注入 |
-| no-backdoor | 2 | BACKDOOR | 无反向 Shell、crontab 持久化、隐藏进程 |
-| safe-shell-commands | 2 | PRIVILEGE_ABUSE | 无 rm -rf、chmod 777、sudo 滥用、危险命令 |
-| web-security | 2 | WEB_SECURITY | 无 SQL 注入、XSS、SSRF、路径遍历、XXE |
-| supply-chain-safety | 2 | SUPPLY_CHAIN | 无拼写混淆攻击、可疑包、Git 配置篡改 |
-| dependency-security | 1 | DEPENDENCY | 无可疑依赖安装、未验证来源 |
-| no-hidden-chars | 1 | 熵 + 隐藏字符检测 | 无混淆载荷、零宽字符、双向控制攻击 |
-| no-ioc-matches | 1 | IOC 检测器 | 无威胁情报数据库匹配 |
-| no-compound-attacks | 1 | 复合检测器 | 无多信号攻击模式（数据泄露、Rug Pull） |
+**分类标准**（来自 YAML `categories` 节，权重由 `severity_weight` 派生）：
+
+| 分类 | 权重 | 描述 |
+|------|------|------|
+| MALICIOUS_CODE | 3 | 无 eval()、exec()、动态代码、原型链污染 |
+| DATA_EXFILTRATION | 3 | 无硬编码 API 密钥、令牌、密码、凭证文件访问 |
+| BACKDOOR | 3 | 无反向 Shell、crontab 持久化、隐藏进程 |
+| PROMPT_INJECTION | 3 | 无系统提示词覆盖、越狱、间接注入 |
+| SUPPLY_CHAIN | 3 | 无拼写混淆攻击、可疑包、Git 配置篡改 |
+| PRIVILEGE_ABUSE | 2 | 无 rm -rf、chmod 777、危险 sudo 命令 |
+| WEB_SECURITY | 2 | 无 SQL 注入、XSS、SSRF、路径遍历、XXE |
+| DEPENDENCY | 2 | 无可疑依赖安装、未验证来源 |
+| CRYPTOGRAPHIC_WEAKNESS | 1 | 无弱加密（DES/RC4/ECB）、弱哈希（MD5/SHA1）、HTTP 明文 |
+
+**检测器标准**（来自 YAML `detectors` 节）：
+
+| 检测器 | 权重 | 引擎 |
+|--------|------|------|
+| 无隐藏/混淆内容 | 1 | entropy, hidden-char |
+| 无威胁情报匹配 | 1 | IOC |
+| 无复合攻击模式 | 1 | compound |
 
 ---
 
@@ -1093,16 +1101,21 @@ runner: {
 }
 ```
 
-### 自定义安全模式
+### 自定义安全规则
 
-安全规则按优先级从三个来源加载：
+所有安全规则集中在一个文件中：`config/security/skill-sec-rules.yaml`。该文件定义：
 
-1. **YAML 规则**：`config/security/skill-sec-rules.yaml`（或项目根目录，或通过 `security.rulesFile` 自定义路径）——最丰富的格式，支持文件类型过滤、严重性权重、类别和建议
-2. **JSON 模式**：`config/security/static-patterns.json`——用于静态代码扫描的正则模式
-3. **Trace 模式**：`config/security/trace-patterns.json`——用于分析智能体运行时行为的模式
-4. **IOC 数据库**：`config/security/ioc-database.json`——威胁情报（恶意 IP、域名、URL 模式、可疑 TLD）
+- **分类 (categories)** — 评估标准及严重性权重（自动生成评分维度）
+- **检测器 (detectors)** — 算法检测器标准（熵分析、IOC、复合检测）
+- **规则 (rules)** — 正则模式及置信度评分、文件类型过滤和建议
 
-规则 ID 冲突时，YAML 优先于 JSON。可以向任何这些文件添加新模式。YAML 格式详见上文 [YAML 安全规则](#yaml-安全规则)。
+其他配置文件：
+
+- **白名单**：`config/security/whitelist.yaml` — 文件/域名排除和按规则覆盖
+- **Trace 模式**：`config/security/trace-patterns.json` — 运行时行为分析模式
+- **IOC 数据库**：`config/security/ioc-database.json` — 威胁情报（恶意 IP、域名、URL 模式）
+
+YAML 格式详见上文 [YAML 安全规则](#yaml-安全规则)。
 
 ### 创建自定义评分标准
 
@@ -1171,27 +1184,18 @@ plugins: {
 
 安全系统在两个层面运作：**静态分析**（代码扫描）和**动态分析**（基于 trace 的行为分析）。
 
-### 静态安全（代码扫描）
+### 静态安全（ScanEngine）
 
-扫描技能源代码中的漏洞：
+所有扫描由统一的 `ScanEngine` 驱动，规则源为 `skill-sec-rules.yaml`。功能特性：
 
-| 检查项 | 描述 |
-|--------|------|
-| no-hardcoded-secrets | 源码中无 API 密钥、密码、令牌 |
-| input-sanitization | 存在输入验证 |
-| safe-shell-commands | 安全的 shell 执行模式 |
-| no-eval-usage | 无危险的 `eval()` 使用 |
-| file-permissions | 安全的文件权限模式 |
-| network-safety | 使用 HTTPS（而非 HTTP） |
-| dependency-security | 存在 `package-lock.json` |
-
-### 高级安全引擎
-
-安全引擎提供深度逐文件扫描和 CVSS 3.1 评分。它从三个来源加载规则（YAML 规则 > JSON 模式 > 硬编码回退），并运行五种检测器：
+- **按规则置信度评分**（30-95）配合 CVSS 3.1 置信度乘数
+- **Markdown 感知扫描** — 代码模式规则仅在围栏代码块内触发；PROMPT 规则使用 `markdownConfidence` 修饰符扫描全文
+- **白名单系统** — 文件排除、可信域名、按规则严重性覆盖和禁用
+- **动态评估标准** — 在 YAML 中添加分类会自动生成评分维度
 
 | 检测器 | 描述 |
 |--------|------|
-| **规则引擎** | 基于 YAML/JSON 规则的正则模式匹配，支持文件类型过滤 |
+| **规则引擎** | 基于 YAML 规则的正则模式匹配，支持按规则置信度和文件类型过滤 |
 | **熵检测** | Shannon 熵分析标记混淆/加密的有效载荷（阈值：5.5 bits） |
 | **隐藏字符** | 零宽字符、Unicode 双向控制（Trojan Source）、西里尔同形异义字符 |
 | **复合检测** | 多信号模式：数据泄露、Rug Pull、凭证中继、后门安装 |

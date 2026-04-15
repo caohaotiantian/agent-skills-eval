@@ -39,7 +39,7 @@ A universal agent skills evaluation tool that strictly follows the [OpenAI eval-
 - **Dynamic Execution with Multi-Backend Support**: Run prompts through 5 agent backends (mock, OpenAI-compatible, Codex, Claude Code, OpenCode)
 - **LLM-Enhanced Test Generation**: Template-based or LLM-powered prompt generation, supporting any OpenAI-compatible API (local or remote)
 - **Trace-Based Security Analysis**: 8 security check categories analyzing actual agent behavior (tool calls, commands, file access, output content) rather than just prompt text
-- **YAML-Driven Security Rules**: Load enterprise-grade security rules from YAML files with per-rule file type filtering, severity weights, and confidence scores — supports 8 categories (malicious code, data exfiltration, privilege abuse, backdoor, prompt injection, dependency, web security, supply chain)
+- **YAML-Driven Security Rules**: Single-source-of-truth security rules from `skill-sec-rules.yaml` with per-rule confidence scores, markdown-aware scanning (code-block extraction), whitelist system, and dynamic evaluation criteria — supports 9 categories (malicious code, data exfiltration, privilege abuse, backdoor, prompt injection, dependency, web security, supply chain, cryptographic weakness)
 - **CVSS 3.1 Scoring**: Industry-standard vulnerability scoring with pre-built vector templates per category and confidence-based score adjustment
 - **Per-File Security Scanning**: Line-by-line scanning with file path and line number tracking, file type filtering via glob patterns, and configurable file size/count limits
 - **Entropy-Based Obfuscation Detection**: Shannon entropy analysis flags lines with suspiciously high entropy that may indicate obfuscated payloads or encrypted malware
@@ -104,7 +104,7 @@ A universal agent skills evaluation tool that strictly follows the [OpenAI eval-
 │  ├── security.js     → Security facade (backward-compatible API)     │
 │  ├── engine/                                                         │
 │  │   ├── index.js    → ScanEngine: per-file scanning orchestrator    │
-│  │   ├── rule-loader.js → YAML + JSON rule loading with merge        │
+│  │   ├── rule-loader.js → YAML rule + whitelist loading               │
 │  │   ├── cvss.js     → CVSS 3.1 calculator with confidence adjust   │
 │  │   ├── ioc.js      → IOC threat intelligence matcher               │
 │  │   └── findings.js → Finding data structure with CVSS severity     │
@@ -122,7 +122,7 @@ A universal agent skills evaluation tool that strictly follows the [OpenAI eval-
 │      ├── Process Goals (4 criteria)                                  │
 │      ├── Style Goals (5 criteria)                                    │
 │      ├── Efficiency Goals (5 criteria)                               │
-│      └── Security Assessment (11 criteria)                           │
+│      └── Security Assessment (dynamic criteria from YAML)             │
 ├──────────────────────────────────────────────────────────────────────┤
 │  Test Generation (lib/skills/generating/)                            │
 │  ├── analyzer.js         → Skill analysis & metadata extraction      │
@@ -162,11 +162,11 @@ A universal agent skills evaluation tool that strictly follows the [OpenAI eval-
 │  Configuration (config/)                                             │
 │  ├── agent-skills-eval.config.js → Project-level configuration       │
 │  ├── rubrics/                    → JSON Schema scoring rubrics       │
-│  ├── security/                   → Security patterns & rules         │
-│  │   ├── static-patterns.json   → Static analysis patterns           │
+│  ├── security/                   → Security rules & configuration    │
+│  │   ├── skill-sec-rules.yaml   → All security rules + categories    │
+│  │   ├── whitelist.yaml         → File/domain/rule exclusions        │
 │  │   ├── trace-patterns.json    → Trace-based detection patterns     │
-│  │   ├── ioc-database.json      → IOC threat intelligence database   │
-│  │   └── skill-sec-rules.yaml   → YAML security rules (gitignored)  │
+│  │   └── ioc-database.json      → IOC threat intelligence database   │
 │  └── evals/                      → Benchmark definitions             │
 ├──────────────────────────────────────────────────────────────────────┤
 │  Reporting (lib/skills/reporting/)                                   │
@@ -655,23 +655,31 @@ Measures resource usage optimization (instruction-only skills receive half weigh
 | efficient-dependencies | 2 | Minimal dependencies (<20 prod, <30 dev) |
 | no-unnecessary-commands | 2 | No unnecessary shell commands |
 
-### 5. Security Assessment (11 criteria) - Engine-Powered
+### 5. Security Assessment - Engine-Powered (Dynamic Criteria)
 
-Evaluates security posture via the ScanEngine with YAML/JSON rules, entropy detection, hidden character detection, IOC matching, and compound attack analysis. Each criterion maps to engine categories or detectors, with CVSS 3.1 scoring.
+Evaluates security posture via the ScanEngine with YAML rules, entropy detection, hidden character detection, IOC matching, and compound attack analysis. **Criteria are dynamically generated from `skill-sec-rules.yaml`** — adding a category or detector in the YAML automatically creates a new evaluation criterion.
 
-| Criterion | Weight | Engine Source | Description |
-|-----------|--------|---------------|-------------|
-| no-hardcoded-secrets | 3 | DATA_EXFILTRATION | No hardcoded API keys, tokens, passwords, credentials |
-| no-malicious-code | 3 | MALICIOUS_CODE | No eval(), exec(), dynamic code execution, rug pull patterns |
-| no-prompt-injection | 2 | PROMPT_INJECTION | No system prompt override, jailbreak, indirect injection |
-| no-backdoor | 2 | BACKDOOR | No reverse shells, crontab persistence, hidden processes |
-| safe-shell-commands | 2 | PRIVILEGE_ABUSE | No rm -rf, chmod 777, sudo abuse, dangerous commands |
-| web-security | 2 | WEB_SECURITY | No SQL injection, XSS, SSRF, path traversal, XXE |
-| supply-chain-safety | 2 | SUPPLY_CHAIN | No typosquatting, suspicious packages, git config tampering |
-| dependency-security | 1 | DEPENDENCY | No suspicious dependency installs, unverified sources |
-| no-hidden-chars | 1 | entropy + hidden-char | No obfuscated payloads, zero-width chars, bidi attacks |
-| no-ioc-matches | 1 | IOC detector | No matches against threat intelligence database |
-| no-compound-attacks | 1 | compound detector | No multi-signal attack patterns (exfiltration, rug pull) |
+**Category-based criteria** (from YAML `categories` section, weight derived from `severity_weight`):
+
+| Category | Weight | Description |
+|----------|--------|-------------|
+| MALICIOUS_CODE | 3 | No eval(), exec(), dynamic code, prototype pollution, weak crypto context |
+| DATA_EXFILTRATION | 3 | No hardcoded API keys, tokens, passwords, credential file access |
+| BACKDOOR | 3 | No reverse shells, crontab persistence, hidden processes |
+| PROMPT_INJECTION | 3 | No system prompt override, jailbreak, indirect injection |
+| SUPPLY_CHAIN | 3 | No typosquatting, suspicious packages, git config tampering |
+| PRIVILEGE_ABUSE | 2 | No rm -rf, chmod 777, dangerous sudo commands |
+| WEB_SECURITY | 2 | No SQL injection, XSS, SSRF, path traversal, XXE |
+| DEPENDENCY | 2 | No suspicious dependency installs, unverified sources |
+| CRYPTOGRAPHIC_WEAKNESS | 1 | No weak crypto (DES/RC4/ECB), weak hash (MD5/SHA1), HTTP non-TLS |
+
+**Detector-based criteria** (from YAML `detectors` section):
+
+| Detector | Weight | Engines |
+|----------|--------|---------|
+| No hidden/obfuscated content | 1 | entropy, hidden-char |
+| No threat intelligence matches | 1 | IOC |
+| No compound attack patterns | 1 | compound |
 
 ---
 
@@ -1100,16 +1108,21 @@ runner: {
 }
 ```
 
-### Customizing Security Patterns
+### Customizing Security Rules
 
-Security rules are loaded from three sources in priority order:
+All security rules are in a single file: `config/security/skill-sec-rules.yaml`. This file defines:
 
-1. **YAML rules**: `config/security/skill-sec-rules.yaml` (or project root, or custom path via `security.rulesFile`) — richest format with file type filtering, severity weights, categories, and suggestions
-2. **JSON patterns**: `config/security/static-patterns.json` — regex patterns for static code scanning
-3. **Trace patterns**: `config/security/trace-patterns.json` — patterns for analyzing agent runtime behavior
-4. **IOC database**: `config/security/ioc-database.json` — threat intelligence (malicious IPs, domains, URL patterns, suspicious TLDs)
+- **Categories** — evaluation criteria with severity weights (used to auto-generate scoring dimensions)
+- **Detectors** — algorithmic detector criteria (entropy, IOC, compound)
+- **Rules** — regex patterns with confidence scores, file type filters, and suggestions
 
-On rule ID collision, YAML wins over JSON. Add new patterns to any of these files. For the YAML format, see [YAML Security Rules](#yaml-security-rules) above.
+Additional configuration:
+
+- **Whitelist**: `config/security/whitelist.yaml` — file/domain exclusions and per-rule overrides
+- **Trace patterns**: `config/security/trace-patterns.json` — patterns for runtime behavior analysis
+- **IOC database**: `config/security/ioc-database.json` — threat intelligence (malicious IPs, domains, URL patterns)
+
+For the YAML format, see [YAML Security Rules](#yaml-security-rules) above.
 
 ### Creating Custom Rubrics
 
@@ -1180,27 +1193,18 @@ CSV files are also supported for backward compatibility.
 
 The security system operates at two levels: **static analysis** (code scanning) and **dynamic analysis** (trace-based behavioral analysis).
 
-### Static Security (Code Scanning)
+### Static Security (ScanEngine)
 
-Scans skill source code for vulnerabilities:
+All scanning is powered by a single `ScanEngine` backed by `skill-sec-rules.yaml`. Features:
 
-| Check | Description |
-|-------|-------------|
-| no-hardcoded-secrets | No API keys, passwords, tokens in source |
-| input-sanitization | Input validation is present |
-| safe-shell-commands | Safe shell execution patterns |
-| no-eval-usage | No dangerous `eval()` usage |
-| file-permissions | Safe file permission patterns |
-| network-safety | Uses HTTPS (not HTTP) |
-| dependency-security | Has `package-lock.json` |
-
-### Advanced Security Engine
-
-The security engine provides deep, per-file scanning with CVSS 3.1 scoring. It loads rules from three sources (YAML rules > JSON patterns > hardcoded fallback) and runs five detector types:
+- **Per-rule confidence scores** (30-95) with CVSS 3.1 confidence multiplier
+- **Markdown-aware scanning** — code-pattern rules only fire inside fenced code blocks; PROMPT rules scan full content with `markdownConfidence` modifier
+- **Whitelist system** — file exclusions, trusted domains, per-rule severity overrides and disabling
+- **Dynamic evaluation criteria** — adding a category in the YAML auto-generates a scoring criterion
 
 | Detector | Description |
 |----------|-------------|
-| **Rule Engine** | Regex-based pattern matching from YAML/JSON rules with file type filtering |
+| **Rule Engine** | Regex-based pattern matching from YAML rules with file type filtering and per-rule confidence |
 | **Entropy** | Shannon entropy analysis flags obfuscated/encrypted payloads (threshold: 5.5 bits) |
 | **Hidden Character** | Zero-width chars, Unicode bidi (Trojan Source), Cyrillic homoglyphs |
 | **Compound** | Multi-signal patterns: exfiltration, rug pull, credential relay, backdoor install |
