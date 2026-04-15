@@ -797,7 +797,7 @@ rules:
       - 'mongodb://.*:.*@'
       - 'redis://.*:.*@'
       - 'jdbc:.*password='
-      - 'password=[^\s&]+'
+      - '(mysql|postgres|mongodb|redis|amqp)://[^:]+:[^@]+@'
     fileTypes:
       - "*"
     suggestion: 移除连接串中的密码，使用环境变量或配置管理

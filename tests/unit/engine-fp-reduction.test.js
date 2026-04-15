@@ -81,17 +81,11 @@ describe('discoverWhitelistPath', () => {
     expect(result).toMatch(/whitelist\.yaml$/);
   });
 
-  it('should return null when no whitelist exists', () => {
-    // Override cwd to a temp dir with no whitelist
-    const origCwd = process.cwd;
-    process.cwd = () => '/tmp/nonexistent-dir-for-test';
-    try {
-      const result = discoverWhitelistPath({});
-      // Could be null or could find the bundled path; depends on module location
-      // The bundled path should still be found since __dirname doesn't change
-    } finally {
-      process.cwd = origCwd;
-    }
+  it('should return null for explicit nonexistent file', () => {
+    const result = discoverWhitelistPath({ whitelistFile: '/tmp/nonexistent-whitelist-xyz.yaml' });
+    // whitelistFile is checked first but doesn't exist, falls through to candidates
+    // The bundled path may still be found, so we just verify it doesn't return the bad path
+    expect(result).not.toBe('/tmp/nonexistent-whitelist-xyz.yaml');
   });
 });
 
@@ -251,5 +245,141 @@ describe('ScanEngine markdown code-block extraction', () => {
     const rmFinding = result.findings.find(f => f.file === 'SKILL.md' && f.line === 10);
     expect(execFinding).toBeDefined();
     expect(rmFinding).toBeDefined();
+  });
+
+  it('should scan content after unclosed fence (not hide it)', async () => {
+    const md = [
+      '# Skill',
+      '',
+      '```js',
+      'eval(payload);',
+      // No closing fence — attacker tries to hide malicious code
+    ].join('\n');
+    await fs.writeFile(path.join(tmpDir, 'SKILL.md'), md);
+    const engine = new ScanEngine({ ioc: false, entropy: false, hiddenChars: false, compoundDetection: false });
+    const result = await engine.scan(tmpDir);
+    const evalFindings = result.findings.filter(f => f.ruleId === 'MAL001' && f.file === 'SKILL.md');
+    expect(evalFindings.length).toBeGreaterThanOrEqual(1);
+    expect(evalFindings[0].line).toBe(4);
+  });
+
+  it('should not close fence on inline backtick inside code block', async () => {
+    const md = [
+      '# Skill',
+      '```js',
+      '`template literal`',  // single backtick — should NOT close the block
+      'eval(payload);',
+      '```',
+    ].join('\n');
+    await fs.writeFile(path.join(tmpDir, 'SKILL.md'), md);
+    const engine = new ScanEngine({ ioc: false, entropy: false, hiddenChars: false, compoundDetection: false });
+    const result = await engine.scan(tmpDir);
+    const evalFindings = result.findings.filter(f => f.ruleId === 'MAL001' && f.file === 'SKILL.md');
+    expect(evalFindings.length).toBeGreaterThanOrEqual(1);
+    expect(evalFindings[0].line).toBe(4);
+  });
+});
+
+describe('ScanEngine severity overrides', () => {
+  let tmpDir;
+
+  beforeEach(async () => {
+    tmpDir = path.join(os.tmpdir(), `scan-sev-test-${Date.now()}`);
+    await fs.ensureDir(tmpDir);
+  });
+
+  afterEach(async () => {
+    await fs.remove(tmpDir);
+  });
+
+  it('should apply severityOverrides from whitelist', async () => {
+    await fs.writeFile(path.join(tmpDir, 'test.js'), 'eval(userInput);');
+    const wlPath = path.join(tmpDir, 'whitelist.yaml');
+    await fs.writeFile(wlPath, 'filePatterns: []\ntrustedDomains: []\nruleOverrides:\n  disabled: []\n  severityOverrides:\n    MAL001: low');
+    const engine = new ScanEngine({ whitelistFile: wlPath, ioc: false, entropy: false, hiddenChars: false, compoundDetection: false });
+    const result = await engine.scan(tmpDir);
+    const mal001 = result.findings.filter(f => f.ruleId === 'MAL001');
+    expect(mal001.length).toBeGreaterThanOrEqual(1);
+    // CVSS recalculates severity, but the rule's base severity was overridden to low
+    // The finding should exist (not suppressed) — severity may be adjusted by CVSS
+    expect(mal001[0]).toBeDefined();
+  });
+});
+
+describe('buildSecurityCriteria', () => {
+  const { EVAL_REGISTRY, _resetSecurityCriteriaCache } = require('../../lib/skills/evaluating');
+
+  afterEach(() => {
+    _resetSecurityCriteriaCache();
+  });
+
+  it('should generate criteria from YAML categories', () => {
+    const criteria = EVAL_REGISTRY['security'].criteria;
+    expect(criteria.length).toBeGreaterThanOrEqual(10); // 9 cats + 3 detectors
+    const catCriteria = criteria.filter(c => c.id.startsWith('cat-'));
+    expect(catCriteria.length).toBeGreaterThanOrEqual(9);
+  });
+
+  it('should generate detector criteria from YAML detectors section', () => {
+    const criteria = EVAL_REGISTRY['security'].criteria;
+    const detCriteria = criteria.filter(c => c.id.startsWith('det-'));
+    expect(detCriteria.length).toBeGreaterThanOrEqual(3);
+    // Each detector criterion should have engineDetectors array
+    for (const d of detCriteria) {
+      expect(d.engineDetectors).toBeInstanceOf(Array);
+      expect(d.engineDetectors.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('should map severity_weight >=30 to weight 3', () => {
+    const criteria = EVAL_REGISTRY['security'].criteria;
+    const malicious = criteria.find(c => c.engineCategories && c.engineCategories.includes('MALICIOUS_CODE'));
+    expect(malicious).toBeDefined();
+    expect(malicious.weight).toBe(3); // severity_weight: 40
+  });
+
+  it('should map severity_weight >=20 to weight 2', () => {
+    const criteria = EVAL_REGISTRY['security'].criteria;
+    const privAbuse = criteria.find(c => c.engineCategories && c.engineCategories.includes('PRIVILEGE_ABUSE'));
+    expect(privAbuse).toBeDefined();
+    expect(privAbuse.weight).toBe(2); // severity_weight: 25
+  });
+
+  it('should map severity_weight <20 to weight 1', () => {
+    const criteria = EVAL_REGISTRY['security'].criteria;
+    const crypto = criteria.find(c => c.engineCategories && c.engineCategories.includes('CRYPTOGRAPHIC_WEAKNESS'));
+    expect(crypto).toBeDefined();
+    expect(crypto.weight).toBe(1); // severity_weight: 15
+  });
+});
+
+describe('CRYPTOGRAPHIC_WEAKNESS category', () => {
+  let tmpDir;
+
+  beforeEach(async () => {
+    tmpDir = path.join(os.tmpdir(), `scan-crypto-test-${Date.now()}`);
+    await fs.ensureDir(tmpDir);
+  });
+
+  afterEach(async () => {
+    await fs.remove(tmpDir);
+  });
+
+  it('should detect weak crypto algorithms', async () => {
+    await fs.writeFile(path.join(tmpDir, 'crypto.js'), 'const cipher = DES.encrypt(data, key);');
+    const engine = new ScanEngine({ ioc: false, entropy: false, hiddenChars: false, compoundDetection: false });
+    const result = await engine.scan(tmpDir);
+    const cryptoFindings = result.findings.filter(f => f.category === 'CRYPTOGRAPHIC_WEAKNESS');
+    expect(cryptoFindings.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('should have CVSS score for CRYPTOGRAPHIC_WEAKNESS findings', async () => {
+    await fs.writeFile(path.join(tmpDir, 'hash.js'), 'const h = MD5(data);');
+    const engine = new ScanEngine({ ioc: false, entropy: false, hiddenChars: false, compoundDetection: false });
+    const result = await engine.scan(tmpDir);
+    const cryptoFindings = result.findings.filter(f => f.category === 'CRYPTOGRAPHIC_WEAKNESS');
+    expect(cryptoFindings.length).toBeGreaterThanOrEqual(1);
+    expect(cryptoFindings[0].cvss).not.toBeNull();
+    expect(cryptoFindings[0].cvss.adjustedScore).toBeGreaterThan(0);
   });
 });

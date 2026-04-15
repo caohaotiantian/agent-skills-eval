@@ -5,6 +5,7 @@
  */
 
 const path = require('path');
+const os = require('os');
 const fs = require('fs-extra');
 const { validateSecurity, checkDependencySecurity } = require('../../lib/validation/security');
 
@@ -18,7 +19,7 @@ describe('checkDependencySecurity', () => {
   });
 
   it('should pass for skill with package.json and lock file', async () => {
-    const tmpDir = path.join(__dirname, 'tmp-dep-test');
+    const tmpDir = path.join(os.tmpdir(), `dep-test-${Date.now()}`);
     await fs.ensureDir(tmpDir);
     await fs.writeJson(path.join(tmpDir, 'package.json'), { dependencies: { lodash: '4.0.0' } });
     await fs.writeFile(path.join(tmpDir, 'package-lock.json'), '{}');
@@ -32,7 +33,7 @@ describe('checkDependencySecurity', () => {
   });
 
   it('should fail when package.json has deps but no lock file', async () => {
-    const tmpDir = path.join(__dirname, 'tmp-dep-test-2');
+    const tmpDir = path.join(os.tmpdir(), `dep-test2-${Date.now()}`);
     await fs.ensureDir(tmpDir);
     await fs.writeJson(path.join(tmpDir, 'package.json'), { dependencies: { lodash: '4.0.0' } });
 
@@ -44,7 +45,7 @@ describe('checkDependencySecurity', () => {
   });
 
   it('should pass when package.json has no dependencies', async () => {
-    const tmpDir = path.join(__dirname, 'tmp-dep-test-3');
+    const tmpDir = path.join(os.tmpdir(), `dep-test3-${Date.now()}`);
     await fs.ensureDir(tmpDir);
     await fs.writeJson(path.join(tmpDir, 'package.json'), { name: 'test' });
 
@@ -60,7 +61,7 @@ describe('checkDependencySecurity', () => {
 // ---------------------------------------------------------------------------
 describe('validateSecurity', () => {
   it('should return result with all expected fields', async () => {
-    const tmpDir = path.join(__dirname, 'tmp-validate-sec');
+    const tmpDir = path.join(os.tmpdir(), `validate-sec-${Date.now()}`);
     await fs.ensureDir(tmpDir);
     await fs.writeFile(path.join(tmpDir, 'SKILL.md'), [
       '---',
@@ -84,7 +85,7 @@ describe('validateSecurity', () => {
   });
 
   it('should have checks derived from YAML categories', async () => {
-    const tmpDir = path.join(__dirname, 'tmp-validate-sec-cats');
+    const tmpDir = path.join(os.tmpdir(), `validate-cats-${Date.now()}`);
     await fs.ensureDir(tmpDir);
     await fs.writeFile(path.join(tmpDir, 'SKILL.md'), '---\nname: test\ndescription: test skill\n---\n# Test');
 
@@ -99,7 +100,7 @@ describe('validateSecurity', () => {
   });
 
   it('should detect vulnerabilities in code files', async () => {
-    const tmpDir = path.join(__dirname, 'tmp-validate-vuln');
+    const tmpDir = path.join(os.tmpdir(), `validate-vuln-${Date.now()}`);
     await fs.ensureDir(tmpDir);
     await fs.writeFile(path.join(tmpDir, 'SKILL.md'), '---\nname: vuln\ndescription: vuln skill\n---\n# Vuln');
     await fs.writeFile(path.join(tmpDir, 'index.js'), [
@@ -121,7 +122,7 @@ describe('validateSecurity', () => {
   });
 
   it('should include engine fields in result', async () => {
-    const tmpDir = path.join(__dirname, 'tmp-validate-engine');
+    const tmpDir = path.join(os.tmpdir(), `validate-engine-${Date.now()}`);
     await fs.ensureDir(tmpDir);
     await fs.writeFile(path.join(tmpDir, 'SKILL.md'), '---\nname: test\ndescription: test\n---\n# Test');
 
