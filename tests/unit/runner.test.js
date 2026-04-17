@@ -110,8 +110,35 @@ describe('validateTrigger', () => {
         toolCalls: [
           { tool: 'AskUserQuestion' },
           { tool: 'EnterPlanMode' },
-          { tool: 'Skill' },
+          { tool: 'Skill' }, // no input.skill — treated as clarifying sub-skill call
           { tool: 'chat_completion' }
+        ],
+        messages: []
+      });
+      expect(result.triggered).toBe(false);
+    });
+
+    it('should treat Skill self-invocation as a definitive trigger', () => {
+      const result = validateTrigger({
+        shouldTrigger: true,
+        expectedTools: ['bash'],
+        skillName: 'skill-creator',
+        toolCalls: [
+          { tool: 'Skill', input: { skill: 'skill-creator', args: 'optimize a skill' } }
+        ],
+        messages: []
+      });
+      expect(result.triggered).toBe(true);
+      expect(result.reason).toContain('skill-creator');
+    });
+
+    it('should ignore Skill calls targeting a different skill', () => {
+      const result = validateTrigger({
+        shouldTrigger: true,
+        expectedTools: '',
+        skillName: 'skill-creator',
+        toolCalls: [
+          { tool: 'Skill', input: { skill: 'some-other-skill' } }
         ],
         messages: []
       });
