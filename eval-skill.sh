@@ -195,15 +195,20 @@ echo ""
 HOST_UID=$(id -u)
 HOST_GID=$(id -g)
 
+SHELL_ENV_ARGS=()
+[[ -n "${ANTHROPIC_API_KEY:-}" ]] && SHELL_ENV_ARGS+=("-e" "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}")
+[[ -n "${ANTHROPIC_BASE_URL:-}" ]] && SHELL_ENV_ARGS+=("-e" "ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL}")
+[[ -n "${ANTHROPIC_MODEL:-}" ]]   && SHELL_ENV_ARGS+=("-e" "ANTHROPIC_MODEL=${ANTHROPIC_MODEL}")
+[[ -n "${OPENAI_API_KEY:-}" ]]    && SHELL_ENV_ARGS+=("-e" "OPENAI_API_KEY=${OPENAI_API_KEY}")
+[[ -n "${OPENAI_BASE_URL:-}" ]]   && SHELL_ENV_ARGS+=("-e" "OPENAI_BASE_URL=${OPENAI_BASE_URL}")
+[[ -n "${OPENAI_MODEL:-}" ]]      && SHELL_ENV_ARGS+=("-e" "OPENAI_MODEL=${OPENAI_MODEL}")
+
 docker run --rm \
   -v "$(cd "$SKILL_PATH" && pwd)":/workspace/skill:ro,z \
   -v "$(cd "$OUTPUT_DIR" && pwd)":/workspace/output:z \
   "${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"}" \
   "${ENV_ARGS[@]+"${ENV_ARGS[@]}"}" \
-  -e ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}" \
-  -e OPENAI_API_KEY="${OPENAI_API_KEY:-}" \
-  -e OPENAI_BASE_URL="${OPENAI_BASE_URL:-}" \
-  -e OPENAI_MODEL="${OPENAI_MODEL:-}" \
+  "${SHELL_ENV_ARGS[@]+"${SHELL_ENV_ARGS[@]}"}" \
   --entrypoint sh \
   "$IMAGE_NAME" \
   -c "mkdir -p ~/.claude/skills && ln -s /workspace/skill ~/.claude/skills/$SKILL_NAME && agent-skills-eval ${PIPELINE_ARGS[*]}; EXIT_CODE=\$?; chown -R $HOST_UID:$HOST_GID /workspace/output 2>/dev/null; exit \$EXIT_CODE"
