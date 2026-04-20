@@ -34,6 +34,11 @@ RUN chmod +x bin/cli.js && ln -s /opt/agent-skills-eval/bin/cli.js /usr/local/bi
 # Install Claude Code CLI
 RUN npm install -g @anthropic-ai/claude-code@2.1.109 && npm cache clean --force
 
+# Pre-complete onboarding so containers don't prompt for login when using a custom provider.
+# ANTHROPIC_BASE_URL / ANTHROPIC_AUTH_TOKEN should be passed at `docker run` time via -e.
+RUN mkdir -p /root/.claude && \
+    echo '{"hasCompletedOnboarding": true, "bypassPermissionsModeAccepted": true}' > /root/.claude.json
+
 # Install OpenCode (latest release binary)
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then ARCH="amd64"; fi && \
