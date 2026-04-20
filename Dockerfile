@@ -32,7 +32,7 @@ RUN chmod +x bin/cli.js && ln -s /opt/agent-skills-eval/bin/cli.js /usr/local/bi
     && chmod -R a+rX /opt/agent-skills-eval
 
 # Install Claude Code CLI
-RUN npm install -g @anthropic-ai/claude-code && npm cache clean --force
+RUN npm install -g @anthropic-ai/claude-code@2.1.109 && npm cache clean --force
 
 # Install OpenCode (latest release binary)
 RUN ARCH=$(uname -m) && \
