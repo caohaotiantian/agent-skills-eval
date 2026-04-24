@@ -132,3 +132,59 @@ describe('Outcome dimension templates', () => {
     });
   }
 });
+
+describe('Process dimension templates', () => {
+  const skillMd = '---\nname: my-skill\ndescription: a description\n---\nBody\n';
+  const skill = {
+    name: 'My-Skill',
+    path: '/tmp/my-skill',
+    description: 'a description',
+    _skillMdContent: skillMd
+  };
+
+  const cases = [
+    {
+      id: 'name-spec-compliant',
+      criterion: { criterion_id: 'name-spec-compliant', passed: false, score: 0, weight: 2,
+        metadata: { name: 'My-Skill', valid: false, length_ok: true } },
+      assertions: r => {
+        expect(r.suggestion).toMatch(/lowercase|kebab-case/i);
+      }
+    },
+    {
+      id: 'description-complete',
+      criterion: { criterion_id: 'description-complete', passed: false, score: 1, weight: 3,
+        metadata: { length: 32, has_what: true, has_when: false } },
+      assertions: r => {
+        expect(r.details.some(d => /when/.test(d))).toBe(true);
+        expect(r.suggestion).toMatch(/when to use|use this when/i);
+      }
+    },
+    {
+      id: 'has-usage-guidance',
+      criterion: { criterion_id: 'has-usage-guidance', passed: false, score: 0, weight: 2,
+        metadata: { has_when: false, has_how: false } },
+      assertions: r => {
+        expect(r.suggestion).toMatch(/usage|when to use/i);
+      }
+    },
+    {
+      id: 'clear-instructions',
+      criterion: { criterion_id: 'clear-instructions', passed: false, score: 0, weight: 3,
+        metadata: { has_steps: false, has_code: false, has_examples: true, sections: 1 } },
+      assertions: r => {
+        expect(r.details.some(d => /step/i.test(d))).toBe(true);
+        expect(r.details.some(d => /code/i.test(d))).toBe(true);
+      }
+    }
+  ];
+
+  for (const c of cases) {
+    it(`produces enrichment for ${c.id}`, () => {
+      const r = buildSuggestion(c.criterion, skill);
+      expect(r).not.toBeNull();
+      expect(r.suggestion).toBeTruthy();
+      c.assertions(r);
+    });
+  }
+});
