@@ -239,3 +239,52 @@ describe('Style dimension templates', () => {
     });
   }
 });
+
+describe('Efficiency dimension templates', () => {
+  const skill = { name: 'x', path: '/tmp/x', _skillMdContent: '' };
+
+  const cases = [
+    {
+      id: 'reasonable-dependency-count',
+      criterion: { criterion_id: 'reasonable-dependency-count', passed: false, score: 0, weight: 2,
+        metadata: { dep_count: 75, file_count: 10 } },
+      assertions: r => { expect(r.details.join(' ')).toMatch(/75/); expect(r.locations[0].file).toBe('package.json'); }
+    },
+    {
+      id: 'async-optimization',
+      criterion: { criterion_id: 'async-optimization', passed: false, score: 0, weight: 2,
+        metadata: { code_files: 5 } },
+      assertions: r => { expect(r.suggestion).toMatch(/async|await|Promise/); }
+    },
+    {
+      id: 'caching',
+      criterion: { criterion_id: 'caching', passed: false, score: 0, weight: 2,
+        metadata: { code_files: 5 } },
+      assertions: r => { expect(r.suggestion).toMatch(/cach/i); }
+    },
+    {
+      id: 'efficient-dependencies',
+      criterion: { criterion_id: 'efficient-dependencies', passed: false, score: 0, weight: 2,
+        metadata: { prod_deps: 25, dev_deps: 35 } },
+      assertions: r => {
+        expect(r.details.join(' ')).toMatch(/25|35/);
+        expect(r.locations[0].file).toBe('package.json');
+      }
+    },
+    {
+      id: 'no-unnecessary-commands',
+      criterion: { criterion_id: 'no-unnecessary-commands', passed: false, score: 1, weight: 2,
+        metadata: { code_files: 2 } },
+      assertions: r => { expect(r.suggestion).toMatch(/parameteriz|exec/i); }
+    }
+  ];
+
+  for (const c of cases) {
+    it(`produces enrichment for ${c.id}`, () => {
+      const r = buildSuggestion(c.criterion, skill);
+      expect(r).not.toBeNull();
+      expect(r.suggestion).toBeTruthy();
+      c.assertions(r);
+    });
+  }
+});
