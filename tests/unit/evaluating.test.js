@@ -72,3 +72,41 @@ describe('instruction-only skill scoring', () => {
     expect(percentage).toBeLessThan(100);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Suggestion enrichment integration — failing criterion gains new fields
+// ---------------------------------------------------------------------------
+describe('suggestion enrichment on criterion result', () => {
+  const fs = require('fs-extra');
+
+  const failingDescSkill = {
+    id: 'failing-desc',
+    name: 'failing-desc',
+    description: 'too short',  // 9 chars, fails has-description (>10) and description-complete
+    platform: 'claude-code',
+    path: FIXTURE_PATH,
+    _skillMdContent: '---\nname: failing-desc\ndescription: too short\n---\nbody'
+  };
+
+  it('adds details/locations/suggestion to a failing criterion', async () => {
+    const criterion = getCriterion('process', 'description-complete');
+    const result = await evaluateCriterion(failingDescSkill, criterion);
+    expect(result.passed).toBe(false);
+    expect(Array.isArray(result.details)).toBe(true);
+    expect(result.details.length).toBeGreaterThan(0);
+    expect(Array.isArray(result.locations)).toBe(true);
+    expect(result.suggestion).toBeTruthy();
+    expect(result.llmSuggestion).toBeNull();
+  });
+
+  it('does not add enrichment fields when criterion passes perfectly', async () => {
+    // has-name passes for any skill object that has a name
+    const criterion = getCriterion('outcome', 'has-name');
+    const result = await evaluateCriterion(failingDescSkill, criterion);
+    expect(result.passed).toBe(true);
+    expect(result.score).toBe(criterion.weight);
+    expect(result.details).toBeUndefined();
+    expect(result.locations).toBeUndefined();
+    expect(result.suggestion).toBeUndefined();
+  });
+});
