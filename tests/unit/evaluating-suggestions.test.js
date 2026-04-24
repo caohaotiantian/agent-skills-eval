@@ -188,3 +188,54 @@ describe('Process dimension templates', () => {
     });
   }
 });
+
+describe('Style dimension templates', () => {
+  const skill = {
+    id: 'My_Skill',
+    name: 'my-skill',
+    path: '/tmp/my-skill',
+    _skillMdContent: '---\nname: my-skill\n---\nshort'
+  };
+
+  const cases = [
+    {
+      id: 'has-documentation',
+      criterion: { criterion_id: 'has-documentation', passed: false, score: 0, weight: 2,
+        metadata: { body_docs: false, has_references: false, has_readme: false } },
+      assertions: r => { expect(r.suggestion).toMatch(/SKILL\.md|references\//); }
+    },
+    {
+      id: 'modular-structure',
+      criterion: { criterion_id: 'modular-structure', passed: false, score: 0, weight: 2,
+        metadata: { scripts: false, references: false, assets: false, lib: false, src: false } },
+      assertions: r => { expect(r.suggestion).toMatch(/scripts|references|assets/); }
+    },
+    {
+      id: 'has-tests',
+      criterion: { criterion_id: 'has-tests', passed: false, score: 0, weight: 3,
+        metadata: { has_tests: false } },
+      assertions: r => { expect(r.suggestion).toMatch(/test/i); }
+    },
+    {
+      id: 'consistent-naming',
+      criterion: { criterion_id: 'consistent-naming', passed: false, score: 0, weight: 2,
+        metadata: { valid_naming: false } },
+      assertions: r => { expect(r.suggestion).toMatch(/kebab-case|lowercase/i); }
+    },
+    {
+      id: 'code-comments',
+      criterion: { criterion_id: 'code-comments', passed: false, score: 0, weight: 1,
+        metadata: { code_files: 3 } },
+      assertions: r => { expect(r.suggestion).toMatch(/comment/i); expect(r.details.join(' ')).toMatch(/3/); }
+    }
+  ];
+
+  for (const c of cases) {
+    it(`produces enrichment for ${c.id}`, () => {
+      const r = buildSuggestion(c.criterion, skill);
+      expect(r).not.toBeNull();
+      expect(r.suggestion).toBeTruthy();
+      c.assertions(r);
+    });
+  }
+});
