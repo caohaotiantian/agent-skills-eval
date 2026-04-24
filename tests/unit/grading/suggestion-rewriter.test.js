@@ -40,3 +40,62 @@ describe('parseRewrittenJson', () => {
     expect(r.a.length).toBe(500);
   });
 });
+
+describe('rewriteSuggestions', () => {
+  let originalRequire;
+
+  beforeEach(() => {
+    jest.resetModules();
+  });
+
+  it('returns {} when failingCriteria is empty', async () => {
+    const { rewriteSuggestions } = require('../../../lib/grading/suggestion-rewriter');
+    const r = await rewriteSuggestions({
+      skillName: 's', skillContent: '', failingCriteria: [], llmConfig: {}
+    });
+    expect(r).toEqual({});
+  });
+
+  it('returns parsed object on successful LLM call', async () => {
+    // Mock the openai module before requiring the rewriter
+    jest.doMock('openai', () => {
+      class MockOpenAI {
+        constructor() { this.chat = { completions: { create: async () => ({
+          choices: [{ message: { content: '{"description-complete": "Add a when-phrase to your one-line description."}' } }]
+        })}}; }
+      }
+      return { default: MockOpenAI };
+    });
+    const { rewriteSuggestions } = require('../../../lib/grading/suggestion-rewriter');
+    const r = await rewriteSuggestions({
+      skillName: 's', skillContent: 'content', llmConfig: { apiKey: 'x' },
+      failingCriteria: [{ criterionId: 'description-complete', reasoning: 'missing when', suggestion: 'add when' }]
+    });
+    expect(r['description-complete']).toMatch(/when-phrase/);
+  });
+
+  it('returns {} on LLM error', async () => {
+    jest.doMock('openai', () => {
+      class MockOpenAI {
+        constructor() { this.chat = { completions: { create: async () => { throw new Error('boom'); } } }; }
+      }
+      return { default: MockOpenAI };
+    });
+    const { rewriteSuggestions } = require('../../../lib/grading/suggestion-rewriter');
+    const r = await rewriteSuggestions({
+      skillName: 's', skillContent: '', llmConfig: { apiKey: 'x' },
+      failingCriteria: [{ criterionId: 'a', reasoning: '', suggestion: '' }]
+    });
+    expect(r).toEqual({});
+  });
+
+  it('returns {} when openai package is not installed', async () => {
+    jest.doMock('openai', () => { throw new Error('not found'); });
+    const { rewriteSuggestions } = require('../../../lib/grading/suggestion-rewriter');
+    const r = await rewriteSuggestions({
+      skillName: 's', skillContent: '', llmConfig: {},
+      failingCriteria: [{ criterionId: 'a', reasoning: '', suggestion: '' }]
+    });
+    expect(r).toEqual({});
+  });
+});
