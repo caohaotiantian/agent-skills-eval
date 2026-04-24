@@ -110,3 +110,60 @@ describe('suggestion enrichment on criterion result', () => {
     expect(result.suggestion).toBeUndefined();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Regression — symlinked skill paths must still surface code-level checks.
+// In Docker, eval-skill.sh symlinks ~/.claude/skills/<name> → /workspace/skill.
+// glob v10+ does not traverse a symlinked cwd, so without realpath() the
+// jsFiles list is empty and every code-level check silently degrades to the
+// "instruction-only" fallback, hiding real findings (notably execSync).
+// ---------------------------------------------------------------------------
+describe('evaluateCriterion — symlinked skill path (Docker layout)', () => {
+  const fs = require('fs-extra');
+  const os = require('os');
+  let tmpDir;
+  let realSkill;
+  let symlinkedSkill;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'eval-symlink-'));
+    realSkill = path.join(tmpDir, 'real-skill');
+    symlinkedSkill = path.join(tmpDir, 'skills-link');
+    await fs.copy(path.resolve(__dirname, '../fixtures/coding-agent'), realSkill);
+    await fs.symlink(realSkill, symlinkedSkill);
+  });
+
+  afterEach(async () => {
+    if (tmpDir) await fs.remove(tmpDir);
+  });
+
+  function makeSkill(p) {
+    return {
+      id: 'coding-agent',
+      name: 'coding-agent',
+      description: 'Create CLI tools, scripts, and applications from natural language specifications',
+      platform: 'claude-code',
+      path: p
+    };
+  }
+
+  it('finds executable code through a symlinked skill path (no false instruction-only fallback)', async () => {
+    const skill = makeSkill(symlinkedSkill);
+    const criterion = getCriterion('efficiency', 'async-optimization');
+    const result = await evaluateCriterion(skill, criterion);
+    // The fixture has `async function` declarations — the criterion must
+    // engage the real check rather than the "not applicable" branch.
+    expect(result.reasoning).not.toMatch(/not applicable/i);
+    expect(result.metadata.code_files).toBeGreaterThan(0);
+  });
+
+  it('detects exec/spawn/execSync through a symlinked skill path (security-critical)', async () => {
+    const skill = makeSkill(symlinkedSkill);
+    const criterion = getCriterion('efficiency', 'no-unnecessary-commands');
+    const result = await evaluateCriterion(skill, criterion);
+    // The fixture's lib/index.js calls execSync with template-literal input —
+    // the criterion must not silently pass with "instruction-only" reasoning.
+    expect(result.reasoning).not.toMatch(/not applicable/i);
+    expect(result.reasoning).toMatch(/exec|spawn|parameteriz/i);
+  });
+});
