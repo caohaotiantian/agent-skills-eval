@@ -40,6 +40,10 @@ describe('Pipeline Integration', () => {
     const html = await fs.readFile(reportPath, 'utf-8');
     expect(html).toMatch(/Pipeline|Agent Skills Evaluation/);
 
+    // Static-eval criteria render via the criterion-panel partial
+    expect(html).toMatch(/class="criterion-panel"/);
+    expect(html).toMatch(/criterion-header/);
+
     // Combined JSON should exist
     if (result.stages.aggregate?.outputPath) {
       expect(await fs.pathExists(result.stages.aggregate.outputPath)).toBe(true);
