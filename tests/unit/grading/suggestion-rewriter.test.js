@@ -99,3 +99,58 @@ describe('rewriteSuggestions', () => {
     expect(r).toEqual({});
   });
 });
+
+describe('rewriteSuggestions caching', () => {
+  const fs = require('fs-extra');
+  const path = require('path');
+  const os = require('os');
+  let cacheDir;
+
+  beforeEach(async () => {
+    jest.resetModules();
+    cacheDir = await fs.mkdtemp(path.join(os.tmpdir(), 'rewriter-cache-'));
+  });
+
+  afterEach(async () => {
+    if (cacheDir) await fs.remove(cacheDir);
+  });
+
+  it('writes a cache file after a successful call', async () => {
+    jest.doMock('openai', () => {
+      class MockOpenAI {
+        constructor() { this.chat = { completions: { create: async () => ({
+          choices: [{ message: { content: '{"a": "rewritten"}' } }]
+        })}}; }
+      }
+      return { default: MockOpenAI };
+    });
+    const { rewriteSuggestions } = require('../../../lib/grading/suggestion-rewriter');
+    await rewriteSuggestions({
+      skillName: 's', skillContent: 'content', llmConfig: { apiKey: 'x' }, cacheDir,
+      failingCriteria: [{ criterionId: 'a', reasoning: 'r', suggestion: 's' }]
+    });
+    const files = await fs.readdir(cacheDir);
+    expect(files.length).toBe(1);
+  });
+
+  it('serves from cache without invoking LLM on second call with same input', async () => {
+    let callCount = 0;
+    jest.doMock('openai', () => {
+      class MockOpenAI {
+        constructor() { this.chat = { completions: { create: async () => {
+          callCount++;
+          return { choices: [{ message: { content: '{"a": "rewritten"}' } }] };
+        }}}; }
+      }
+      return { default: MockOpenAI };
+    });
+    const { rewriteSuggestions } = require('../../../lib/grading/suggestion-rewriter');
+    const args = {
+      skillName: 's', skillContent: 'content', llmConfig: { apiKey: 'x' }, cacheDir,
+      failingCriteria: [{ criterionId: 'a', reasoning: 'r', suggestion: 's' }]
+    };
+    await rewriteSuggestions(args);
+    await rewriteSuggestions(args);
+    expect(callCount).toBe(1);
+  });
+});
