@@ -52,6 +52,13 @@ module.exports = {
     passingScore: 6       // Minimum overall score (1-10) for a test to pass
   },
 
+  // Static-eval suggestion enrichment
+  evaluation: {
+    suggestions: true,                               // Master switch — emit details/locations/suggestion fields per criterion
+    llmSuggestion: false,                            // Use LLM to rewrite generic suggestions into skill-specific advice (requires LLM config)
+    llmSuggestionCacheTtlMs: 24 * 60 * 60 * 1000     // 24h — cache stays valid until SKILL.md content changes
+  },
+
   // LLM configuration — used by test generation, LLM grading, and LLM security judge
   llm: {
     baseURL: 'http://127.0.0.1:1234/v1',   // OpenAI-compatible API endpoint (env: OPENAI_BASE_URL)
