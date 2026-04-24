@@ -510,6 +510,8 @@ program
   .option('--no-llm', 'Use template-based generation (default)')
   .option('--llm-judge', 'Enable LLM-as-Judge for security analysis (default: on)')
   .option('--no-llm-judge', 'Disable LLM-as-Judge security analysis')
+  .option('--llm-suggestion', 'Use LLM to rewrite static-eval suggestions into skill-specific advice (default: off)')
+  .option('--no-suggestion', 'Disable static-eval suggestion enrichment entirely (emergency rollback)')
   .option('-f, --format <format>', 'Report format (html, markdown, json)', 'html')
   .option('-o, --output <file>', 'Report output path')
   .option('--output-dir <dir>', 'Output directory for results')
@@ -539,6 +541,8 @@ program
         concurrency: options.concurrency,
         useLLM: options.llm === true,
         llmJudge: options.llmJudge,
+        llmSuggestion: options.llmSuggestion,
+        suggestions: options.suggestion !== false,
         format: options.format,
         output: options.output,
         outputDir: options.outputDir,
