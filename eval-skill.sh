@@ -14,6 +14,7 @@ OUTPUT_DIR=""
 FORCE_BUILD=false
 USE_LLM=false
 LLM_JUDGE=""
+LLM_SUGGESTION=""    # "", "true", or "false" — empty means "auto-default to USE_LLM"
 SKILL_PATH=""
 
 usage() {
@@ -28,8 +29,10 @@ Options:
   -b, --backend NAME  Force backend (claude-code|opencode|openai-compatible|mock)
   -o, --output DIR    Output directory (default: $DEFAULT_OUTPUT)
   --build             Force rebuild Docker image
-  --llm               Enable LLM-powered test generation
+  --llm               Enable LLM-powered test generation (also auto-enables --llm-suggestion)
   --no-llm-judge      Disable LLM-as-Judge security analysis (enabled by default)
+  --llm-suggestion    Enable LLM rewriting of static-eval suggestions (auto-on with --llm)
+  --no-llm-suggestion Disable LLM rewriting even when --llm is set
   -h, --help          Show this help
 
 Examples:
@@ -69,6 +72,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --no-llm-judge)
       LLM_JUDGE=false
+      shift
+      ;;
+    --llm-suggestion)
+      LLM_SUGGESTION=true
+      shift
+      ;;
+    --no-llm-suggestion)
+      LLM_SUGGESTION=false
       shift
       ;;
     -h|--help)
@@ -176,6 +187,14 @@ fi
 
 if [[ "$LLM_JUDGE" == "false" ]]; then
   PIPELINE_ARGS+=("--no-llm-judge")
+fi
+
+# --llm-suggestion: auto-on when --llm is set, unless user explicitly passed --no-llm-suggestion
+if [[ -z "$LLM_SUGGESTION" && "$USE_LLM" == "true" ]]; then
+  LLM_SUGGESTION=true
+fi
+if [[ "$LLM_SUGGESTION" == "true" ]]; then
+  PIPELINE_ARGS+=("--llm-suggestion")
 fi
 
 # ---- Run container ----

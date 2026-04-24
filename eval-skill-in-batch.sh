@@ -30,8 +30,10 @@ Options:
   -b, --backend NAME  Force backend (passed to eval-skill.sh)
   -o, --output DIR    Base output directory (default: $DEFAULT_OUTPUT)
   --build             Force rebuild Docker image (passed to eval-skill.sh)
-  --llm               Enable LLM-powered test generation (passed to eval-skill.sh)
+  --llm               Enable LLM-powered test generation (also auto-enables --llm-suggestion)
   --no-llm-judge      Disable LLM-as-Judge security analysis (passed to eval-skill.sh)
+  --llm-suggestion    Enable LLM rewriting of static-eval suggestions (auto-on with --llm)
+  --no-llm-suggestion Disable LLM rewriting even when --llm is set
   -j, --jobs N        Max parallel evaluations (default: 1)
   -h, --help          Show this help
 
@@ -68,6 +70,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --no-llm-judge)
       PASS_THROUGH_ARGS+=("--no-llm-judge")
+      shift
+      ;;
+    --llm-suggestion)
+      PASS_THROUGH_ARGS+=("--llm-suggestion")
+      shift
+      ;;
+    --no-llm-suggestion)
+      PASS_THROUGH_ARGS+=("--no-llm-suggestion")
       shift
       ;;
     -o|--output)
