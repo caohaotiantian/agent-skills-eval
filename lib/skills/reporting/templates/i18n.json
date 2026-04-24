@@ -106,6 +106,12 @@
 
     "composite.formula": "Composite Score = 35% Static + 35% Dynamic + 15% Efficiency + 15% Security (min of static & dynamic)",
 
+    "criterion.reasoning": "Why",
+    "criterion.specifics": "Specifics",
+    "criterion.location": "Location",
+    "criterion.suggestion": "How to fix",
+    "badge.ai_rewritten": "AI-rewritten",
+
     "lang.switch": "中文"
   },
   "zh": {
@@ -214,6 +220,12 @@
     "dim.security": "5. 安全评估：无硬编码密钥，安全的执行模式",
 
     "composite.formula": "综合评分 = 35% 静态 + 35% 动态 + 15% 效率 + 15% 安全 (取静态与动态最低值)",
+
+    "criterion.reasoning": "原因",
+    "criterion.specifics": "具体细节",
+    "criterion.location": "位置",
+    "criterion.suggestion": "修复建议",
+    "badge.ai_rewritten": "AI 改写",
 
     "lang.switch": "EN"
   }
