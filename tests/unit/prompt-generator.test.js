@@ -258,6 +258,55 @@ describe('Prompt Generator', () => {
 
       expect(tools).toContain('bash');
     });
+
+    // Priority 1: when the skill declares `available_skills`, the canonical
+    // expected_tools is `Skill` + the sub-skill names. Generic tools like
+    // bash/write get matched by any coding agent and produce false-positive
+    // triggers — sub-skill names are the precise signal.
+    it('prefers Skill + available_skills sub-names when present', () => {
+      const skill = { name: 'coding-agent' };
+      const skillAnalysis = {
+        name: 'coding-agent',
+        availableSkills: [
+          { name: 'create-cli-tool', triggers: ['create tool'] },
+          { name: 'write-file', triggers: ['write file'] },
+          { name: 'run-tests', triggers: ['run tests'] }
+        ],
+        implementation: { tools: ['bash', 'writeFile', 'mkdir'] }
+      };
+      const tools = inferExpectedTools(skill, skillAnalysis);
+      expect(tools).toEqual(['Skill', 'create-cli-tool', 'write-file', 'run-tests']);
+      // Crucially, we did NOT degrade to bash/write — those would match any
+      // coding agent regardless of whether the skill was actually consulted.
+      expect(tools).not.toContain('bash');
+      expect(tools).not.toContain('writeFile');
+    });
+
+    it('uses last-resort Bash only when no available_skills and no impl tools', () => {
+      const skill = { name: 'instruction-only' };
+      const skillAnalysis = {
+        name: 'instruction-only',
+        availableSkills: [],
+        implementation: { tools: [] }
+      };
+      expect(inferExpectedTools(skill, skillAnalysis)).toEqual(['Bash']);
+    });
+
+    it('skips the parent skill name itself when listing sub-skills', () => {
+      // Edge: an availableSkills entry that re-states the parent name should
+      // not pollute expected_tools.
+      const skill = { name: 'coding-agent' };
+      const skillAnalysis = {
+        name: 'coding-agent',
+        availableSkills: [
+          { name: 'coding-agent', triggers: [] },
+          { name: 'create-cli-tool', triggers: [] }
+        ],
+        implementation: { tools: [] }
+      };
+      const tools = inferExpectedTools(skill, skillAnalysis);
+      expect(tools).toEqual(['Skill', 'create-cli-tool']);
+    });
   });
 });
 

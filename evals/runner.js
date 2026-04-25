@@ -175,13 +175,17 @@ const CLARIFICATION_TOOLS = new Set([
  *   sub-skill call and filtered out
  * - Anything else → substantive
  */
-function isSubstantiveCall(tc, skillName) {
+function isSubstantiveCall(tc, skillName, expectedToolsLower = []) {
   const tool = tc.tool || '';
   if (CLARIFICATION_TOOLS.has(tool)) return false;
   if (tool === 'Skill') {
-    if (!skillName) return false; // unknown target — preserve old conservative behavior
     const invoked = (tc.input?.skill || '').toLowerCase();
-    return invoked === String(skillName).toLowerCase();
+    if (skillName && invoked === String(skillName).toLowerCase()) return true;
+    // A `Skill({skill: "<sub>"})` call is substantive when the target is
+    // declared as a sub-skill of the skill under test — i.e. it appears
+    // in expected_tools (which Fix A populates from `available_skills`).
+    if (invoked && expectedToolsLower.includes(invoked)) return true;
+    return false;
   }
   return true;
 }
@@ -213,20 +217,25 @@ function validateTrigger({ shouldTrigger, expectedTools, toolCalls, messages, sk
     : (expectedTools || '').split(',')
   ).map(t => String(t).trim().toLowerCase()).filter(Boolean);
 
-  // Classify tool calls
-  const substantiveTools = toolCalls.filter(tc => isSubstantiveCall(tc, skillName));
+  // Classify tool calls — Skill({skill: "<sub>"}) with sub in expected
+  // counts as substantive (see isSubstantiveCall).
+  const substantiveTools = toolCalls.filter(tc => isSubstantiveCall(tc, skillName, expected));
   const toolNames = substantiveTools.map(tc => (tc.tool || '').toLowerCase());
 
-  // Direct skill self-invocation is a definitive trigger signal — short-circuits
-  // the expected_tools check, which often defaults to ["bash"] for plugin skills.
-  const skillInvoked = skillName && substantiveTools.some(tc =>
-    tc.tool === 'Skill' &&
-    (tc.input?.skill || '').toLowerCase() === String(skillName).toLowerCase()
-  );
+  // Definitive trigger signal: agent invoked Skill({skill: "<this>"}) directly,
+  // OR Skill({skill: "<sub>"}) where <sub> is a declared sub-skill (in expected).
+  // Short-circuits the expected_tools check below.
+  const skillInvocation = substantiveTools.find(tc => {
+    if (tc.tool !== 'Skill') return false;
+    const invoked = (tc.input?.skill || '').toLowerCase();
+    if (skillName && invoked === String(skillName).toLowerCase()) return true;
+    return invoked && expected.includes(invoked);
+  });
 
   if (shouldTrigger) {
-    if (skillInvoked) {
-      return { triggered: true, reason: `Skill "${skillName}" invoked directly via Skill tool` };
+    if (skillInvocation) {
+      const target = skillInvocation.input?.skill || skillName;
+      return { triggered: true, reason: `Skill invoked directly via Skill({skill: "${target}"})` };
     }
     // Strategy 1: expected_tools defined → check intersection
     if (expected.length > 0) {

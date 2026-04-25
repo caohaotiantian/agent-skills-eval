@@ -179,6 +179,53 @@ describe('validateTrigger', () => {
       expect(result.reason).toContain('unexpectedly triggered');
     });
   });
+
+  // -------------------------------------------------------------------------
+  // Plugin-style skills with available_skills: Skill({skill: "<sub>"}) where
+  // <sub> is a declared sub-skill must count as a strong direct-invocation
+  // signal, not be filtered out as "calling a different skill".
+  // -------------------------------------------------------------------------
+  describe('Skill({skill: "<sub>"}) with sub-skill in expected_tools', () => {
+    it('treats Skill call targeting a declared sub-skill as the strong invocation signal', () => {
+      const result = validateTrigger({
+        shouldTrigger: true,
+        expectedTools: 'Skill,create-cli-tool,write-file,run-tests',
+        toolCalls: [{ tool: 'Skill', input: { skill: 'create-cli-tool' } }],
+        messages: [],
+        skillName: 'coding-agent'
+      });
+      expect(result.triggered).toBe(true);
+      // Strong-signal path produces this specific phrasing (short-circuits
+      // the generic "expected tools matched" branch).
+      expect(result.reason).toMatch(/invoked directly via Skill/i);
+      expect(result.reason).toContain('create-cli-tool');
+    });
+
+    it('still recognizes parent-skill self-invocation Skill({skill: "<this>"})', () => {
+      const result = validateTrigger({
+        shouldTrigger: true,
+        expectedTools: 'Skill',
+        toolCalls: [{ tool: 'Skill', input: { skill: 'coding-agent' } }],
+        messages: [],
+        skillName: 'coding-agent'
+      });
+      expect(result.triggered).toBe(true);
+      expect(result.reason).toMatch(/invoked directly via Skill/i);
+    });
+
+    it('does NOT promote Skill({skill: "<unrelated>"}) to substantive when target is not in expected_tools', () => {
+      // The agent reached for an entirely different skill — no Skill() target
+      // matches expected, no other tool was used. Should report not triggered.
+      const result = validateTrigger({
+        shouldTrigger: true,
+        expectedTools: 'Skill,create-cli-tool',
+        toolCalls: [{ tool: 'Skill', input: { skill: 'some-other-skill' } }],
+        messages: [],
+        skillName: 'coding-agent'
+      });
+      expect(result.triggered).toBe(false);
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
