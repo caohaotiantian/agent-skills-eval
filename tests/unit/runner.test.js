@@ -48,15 +48,26 @@ describe('validateTrigger', () => {
       expect(result.reason).toContain('Expected tools matched');
     });
 
-    it('should pass with substantive tools even when expected tools not found', () => {
+    // expected_tools is the test author's contract: if specified, those are
+    // the signals that prove the skill was activated. A miss must NOT be
+    // rescued by "the agent used some other tool" — that turns the contract
+    // into a no-op (any agent doing any work would pass). The previous
+    // behaviour produced false positives for plugin-style skills whose
+    // expected_tools=['Skill'] was never matched but the agent still did
+    // generic Read/Glob/Bash work.
+    it('should fail when expected tools are defined but not called, even if other substantive work happened', () => {
       const result = validateTrigger({
         shouldTrigger: true,
-        expectedTools: 'Read',
-        toolCalls: [{ tool: 'Edit' }, { tool: 'Grep' }],
-        messages: []
+        expectedTools: 'Skill',
+        toolCalls: [{ tool: 'Read' }, { tool: 'Glob' }, { tool: 'Bash' }],
+        messages: [],
+        skillName: 'brainstorming'
       });
-      expect(result.triggered).toBe(true);
-      expect(result.reason).toContain('not found, but agent used');
+      expect(result.triggered).toBe(false);
+      expect(result.reason).toContain('were not called');
+      // The agent's actual tools are surfaced in the reason for diagnosis,
+      // but they do not flip the verdict.
+      expect(result.reason).toMatch(/Read|Glob|Bash/);
     });
 
     it('should fail when expected tools not called and no substantive work', () => {

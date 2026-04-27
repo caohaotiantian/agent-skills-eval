@@ -237,18 +237,16 @@ function validateTrigger({ shouldTrigger, expectedTools, toolCalls, messages, sk
       const target = skillInvocation.input?.skill || skillName;
       return { triggered: true, reason: `Skill invoked directly via Skill({skill: "${target}"})` };
     }
-    // Strategy 1: expected_tools defined → check intersection
+    // Strategy 1: expected_tools defined → check intersection.
+    // expected_tools is the test author's explicit contract: "these are the
+    // signals that prove this skill was activated". A miss is a miss — we
+    // do not fall back to "but the agent did something else", because that
+    // would let any agent doing any work satisfy the test and undermine
+    // the whole point of asking for specific tools.
     if (expected.length > 0) {
       const matched = expected.filter(et => toolNames.some(tn => tn === et));
       if (matched.length > 0) {
         return { triggered: true, reason: `Expected tools matched: ${matched.join(', ')}` };
-      }
-      // Even if expected tools not matched, check if substantive work was done
-      if (substantiveTools.length > 0) {
-        return {
-          triggered: true,
-          reason: `Expected tools [${expected.join(', ')}] not found, but agent used: ${toolNames.join(', ')}`
-        };
       }
       return {
         triggered: false,
