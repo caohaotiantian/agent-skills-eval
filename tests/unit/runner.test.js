@@ -168,15 +168,61 @@ describe('validateTrigger', () => {
       expect(result.reason).toContain('correctly not triggered');
     });
 
-    it('should fail when substantive tools are called', () => {
+    // Generic tool use on a negative prompt does NOT prove the skill was
+    // triggered — the agent might just be doing unrelated work on an
+    // off-topic prompt. We only flag a trigger violation when there's a
+    // specific signal: a direct Skill() invocation or an explicit
+    // expected_tools match.
+    it('does NOT flag generic Bash/Write as a trigger when expected_tools is empty', () => {
       const result = validateTrigger({
         shouldTrigger: false,
         expectedTools: '',
-        toolCalls: [{ tool: 'Bash' }, { tool: 'Write' }],
-        messages: []
+        toolCalls: [{ tool: 'Bash' }, { tool: 'Write' }, { tool: 'Glob' }],
+        messages: [],
+        skillName: 'brainstorming'
+      });
+      expect(result.triggered).toBe(false);
+      expect(result.reason).toContain('correctly not triggered');
+    });
+
+    it('flags direct Skill({skill: "<this>"}) invocation as unexpected trigger', () => {
+      const result = validateTrigger({
+        shouldTrigger: false,
+        expectedTools: '',
+        toolCalls: [{ tool: 'Skill', input: { skill: 'brainstorming' } }],
+        messages: [],
+        skillName: 'brainstorming'
       });
       expect(result.triggered).toBe(true);
-      expect(result.reason).toContain('unexpectedly triggered');
+      expect(result.reason).toMatch(/unexpectedly invoked via Skill/i);
+      expect(result.reason).toContain('brainstorming');
+    });
+
+    it('flags Skill({skill: "<sub>"}) when sub-skill is in expected_tools', () => {
+      const result = validateTrigger({
+        shouldTrigger: false,
+        expectedTools: 'Skill,create-cli-tool',
+        toolCalls: [{ tool: 'Skill', input: { skill: 'create-cli-tool' } }],
+        messages: [],
+        skillName: 'coding-agent'
+      });
+      expect(result.triggered).toBe(true);
+      expect(result.reason).toContain('create-cli-tool');
+    });
+
+    it('flags expected_tools intersection as unexpected trigger', () => {
+      // When the test author opted into a specific expected_tools list,
+      // matching any of them on a negative prompt counts as a violation.
+      const result = validateTrigger({
+        shouldTrigger: false,
+        expectedTools: 'kubectl,helm',
+        toolCalls: [{ tool: 'kubectl' }],
+        messages: [],
+        skillName: 'k8s-helper'
+      });
+      expect(result.triggered).toBe(true);
+      expect(result.reason).toMatch(/expected tools matched/i);
+      expect(result.reason).toContain('kubectl');
     });
   });
 

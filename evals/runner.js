@@ -276,13 +276,39 @@ function validateTrigger({ shouldTrigger, expectedTools, toolCalls, messages, sk
       reason: 'No substantive tool calls or meaningful content produced (only clarification/questions)'
     };
   } else {
-    // should_trigger = false → skill should NOT have been triggered
-    if (substantiveTools.length > 0) {
+    // should_trigger = false → skill should NOT have been triggered.
+    // Only count as "triggered" when there is specific evidence of THIS
+    // skill being activated. The previous heuristic ("any substantive tool
+    // call counts") flagged every negative case as a false positive — an
+    // agent doing unrelated reads/bash on an off-topic prompt would be
+    // judged a trigger violation. Use the same precise signals the positive
+    // branch relies on: direct Skill() invocation, or an explicit
+    // expected_tools match.
+
+    // Evidence 1: Skill() invocation of this skill or a declared sub-skill
+    // (skillInvocation already considers both — see above).
+    if (skillInvocation) {
+      const target = skillInvocation.input?.skill || skillName;
       return {
-        triggered: true, // bad — it triggered when it shouldn't have
-        reason: `Skill unexpectedly triggered — agent used: ${toolNames.join(', ')}`
+        triggered: true,
+        reason: `Skill unexpectedly invoked via Skill({skill: "${target}"})`
       };
     }
+
+    // Evidence 2: explicit expected_tools defined and at least one matched
+    // (the test author opted in to a specific signal beyond Skill()).
+    if (expected.length > 0) {
+      const matched = expected.filter(et => toolNames.some(tn => tn === et));
+      if (matched.length > 0) {
+        return {
+          triggered: true,
+          reason: `Skill unexpectedly triggered — expected tools matched: ${matched.join(', ')}`
+        };
+      }
+    }
+
+    // No specific evidence of this skill being activated. Generic tool use
+    // (Bash, Glob, Read, ...) is not by itself a skill-trigger signal.
     return { triggered: false, reason: 'Skill correctly not triggered' };
   }
 }
