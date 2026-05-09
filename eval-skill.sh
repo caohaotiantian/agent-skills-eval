@@ -15,6 +15,7 @@ FORCE_BUILD=false
 USE_LLM=false
 LLM_JUDGE=""
 LLM_SUGGESTION=""    # "", "true", or "false" — empty means "auto-default to USE_LLM"
+CONCURRENCY=""
 SKILL_PATH=""
 
 usage() {
@@ -33,6 +34,7 @@ Options:
   --no-llm-judge      Disable LLM-as-Judge security analysis (enabled by default)
   --llm-suggestion    Enable LLM rewriting of static-eval suggestions (auto-on with --llm)
   --no-llm-suggestion Disable LLM rewriting even when --llm is set
+  -c, --concurrency <n>  Parallel prompt executions within a single skill (default: 1)
   -h, --help          Show this help
 
 Examples:
@@ -60,6 +62,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -o|--output)
       OUTPUT_DIR="$2"
+      shift 2
+      ;;
+    -c|--concurrency)
+      CONCURRENCY="$2"
       shift 2
       ;;
     --build)
@@ -195,6 +201,10 @@ if [[ -z "$LLM_SUGGESTION" && "$USE_LLM" == "true" ]]; then
 fi
 if [[ "$LLM_SUGGESTION" == "true" ]]; then
   PIPELINE_ARGS+=("--llm-suggestion")
+fi
+
+if [[ -n "$CONCURRENCY" ]]; then
+  PIPELINE_ARGS+=("-c" "$CONCURRENCY")
 fi
 
 # ---- Run container ----
