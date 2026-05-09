@@ -20,6 +20,11 @@ trap 'rm -rf "$SANDBOX"' EXIT
 mkdir -p "$SANDBOX/skill"
 printf -- '---\nname: stub\ndescription: stub for acceptance test (must be at least sixteen chars long)\n---\nbody\n' > "$SANDBOX/skill/SKILL.md"
 
+# Multi-skill tree for criterion §7-6 (eval-skill-in-batch.sh discovers SKILL.md
+# files under the given directory).
+mkdir -p "$SANDBOX/skills/alpha"
+printf -- '---\nname: alpha\ndescription: alpha stub for batch acceptance test (must be at least sixteen chars long)\n---\nbody\n' > "$SANDBOX/skills/alpha/SKILL.md"
+
 # docker shim — appends each invocation's argv to a single recording file.
 mkdir -p "$SANDBOX/bin"
 cat > "$SANDBOX/bin/docker" <<EOF
@@ -92,6 +97,36 @@ subtest_7_5() {
     | grep -E -- '--concurrency|[[:space:]]-c[[:space:]]+[0-9]' >/dev/null
 }
 run_subtest "§7-5 absent -c yields no -c/--concurrency in inner argv" subtest_7_5
+
+# ---- §7-3a: batch help text exposes -c / --concurrency on one line ----
+subtest_7_3a() {
+  ( cd "$REPO_ROOT" && ./eval-skill-in-batch.sh --help 2>&1 ) \
+    | grep -E -- '-c.*--concurrency|--concurrency.*-c' >/dev/null
+}
+run_subtest "§7-3a eval-skill-in-batch.sh --help mentions -c/--concurrency" subtest_7_3a
+
+# ---- §7-3b: batch help text describes per-skill / prompt scope ----
+subtest_7_3b() {
+  ( cd "$REPO_ROOT" && ./eval-skill-in-batch.sh --help 2>&1 ) \
+    | grep -iE 'within.*skill|per.skill|prompt' >/dev/null
+}
+run_subtest "§7-3b eval-skill-in-batch.sh --help describes within/per-skill/prompt scope" subtest_7_3b
+
+# ---- §7-3c: batch help text still documents -j/--jobs ----
+subtest_7_3c() {
+  ( cd "$REPO_ROOT" && ./eval-skill-in-batch.sh --help 2>&1 ) \
+    | grep -E -- '-j.*--jobs|--jobs.*-j' >/dev/null
+}
+run_subtest "§7-3c eval-skill-in-batch.sh --help still documents -j/--jobs" subtest_7_3c
+
+# ---- §7-6: batch script forwards -c 4 end-to-end to inner pipeline argv ----
+subtest_7_6() {
+  :> "$SANDBOX/docker.argv"
+  PATH="$SANDBOX/bin:$PATH" "$REPO_ROOT/eval-skill-in-batch.sh" -b mock -c 4 -o "$SANDBOX/out" "$SANDBOX/skills" >/dev/null 2>&1 || true
+  grep -F -- 'agent-skills-eval pipeline' "$SANDBOX/docker.argv" \
+    | grep -E -- '-c[[:space:]]+4' >/dev/null
+}
+run_subtest "§7-6 batch -c 4 reaches inner agent-skills-eval pipeline argv" subtest_7_6
 
 # ---- Summary ----
 printf '\n---\n'

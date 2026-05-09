@@ -34,6 +34,7 @@ Options:
   --no-llm-judge      Disable LLM-as-Judge security analysis (passed to eval-skill.sh)
   --llm-suggestion    Enable LLM rewriting of static-eval suggestions (auto-on with --llm)
   --no-llm-suggestion Disable LLM rewriting even when --llm is set
+  -c, --concurrency <n>  Parallel prompts WITHIN each skill (passed to eval-skill.sh; multiplies with -j: -j 4 -c 8 = up to 32 concurrent backend calls — mind your rate limits)
   -j, --jobs N        Max parallel evaluations (default: 1)
   -h, --help          Show this help
 
@@ -58,6 +59,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -b|--backend)
       PASS_THROUGH_ARGS+=("-b" "$2")
+      shift 2
+      ;;
+    -c|--concurrency)
+      PASS_THROUGH_ARGS+=("-c" "$2")
       shift 2
       ;;
     --build)
