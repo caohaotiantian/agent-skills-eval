@@ -104,7 +104,7 @@ program
   .argument('<skill>', 'Skill name to evaluate')
   .option('-v, --verbose', 'Show verbose output')
   .option('-b, --backend <name>', 'Agent backend (mock, openai-compatible, codex, claude-code, opencode)')
-  .option('-c, --concurrency <number>', 'Max parallel prompt executions', parseInt, 1)
+  .option('-c, --concurrency <number>', 'Max parallel prompt executions', (v) => parseInt(v, 10), 1)
   .option('--output <dir>', 'Output directory for traces')
   .action(async (skillName, options) => {
     const runner = require('../evals/runner');
@@ -515,7 +515,7 @@ program
   .option('-f, --format <format>', 'Report format (html, markdown, json)', 'html')
   .option('-o, --output <file>', 'Report output path')
   .option('--output-dir <dir>', 'Output directory for results')
-  .option('-c, --concurrency <number>', 'Max parallel prompt executions', parseInt, 1)
+  .option('-c, --concurrency <number>', 'Max parallel prompt executions', (v) => parseInt(v, 10), 1)
   .option('--skip-generate', 'Skip test generation (use existing prompts)')
   .option('--backends <names>', 'Comma-separated backends for comparative evaluation')
   .option('--skip-dynamic', 'Skip dynamic execution and trace analysis')
