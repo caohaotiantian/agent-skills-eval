@@ -859,7 +859,7 @@ rules:
     fileTypes:
       - "*.md"
       - "SKILL.md"
-    # 已知误报（设计 R1 接受）：正则不做否定判定，安全措辞如
+    # 已知误报：正则不做否定判定，安全措辞如
     # “Never delete files without asking” 会与威胁短语同样命中，需人工复核语义意图。
     suggestion: 移除无确认自主执行的措辞，高危操作须先获得用户确认（注意：否定/安全语境为已知误报，须人工复核）
 
@@ -880,7 +880,7 @@ rules:
       - "*.sh"
       - "*.py"
       - "*.js"
-    # 已知误报（设计 Decision 4.4 / R1 接受）：--auto-approve / --no-confirm 为
+    # 已知误报：--auto-approve / --no-confirm 为
     # 合法自动化工具（如 terraform apply、aws cli）的标准标志，记录 CI 用法的正当 Skill
     # 会命中本规则；保留为 code-evidence 信号，须人工复核是否为越权自主执行。
     suggestion: 移除自动批准标志，保留交互式确认提示（注意：合法 CLI/CI 文档为已知误报，须人工复核）
