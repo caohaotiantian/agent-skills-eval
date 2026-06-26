@@ -77,6 +77,23 @@ for (const { id, kebab, tier } of PHASE3_CATEGORIES) {
   });
 }
 
+// Per-rule firing guard — AC1 only asserts >=1 finding per CATEGORY, so it is satisfied
+// by TM001/EA001 alone and leaves TM002 (auth-disabled / permissive-CORS) and EA002
+// (auto-approve flags) unverified. These guard their detection (not just compilation).
+describe('per-rule firing', () => {
+  it('EA002: auto-approve flag in positive fixture yields an EA002 finding', async () => {
+    const result = await scanCategory('excessive-agency', 'positive');
+    const hits = result.findings.filter(f => f.ruleId === 'EA002');
+    expect(hits.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('TM002: auth-disabled / permissive-CORS default in positive fixture yields a TM002 finding', async () => {
+    const result = await scanCategory('tool-misuse', 'positive');
+    const hits = result.findings.filter(f => f.ruleId === 'TM002');
+    expect(hits.length).toBeGreaterThanOrEqual(1);
+  });
+});
+
 // AC7 — cross-category non-overlap: the novel TOOL_MISUSE slice must not duplicate
 // MALICIOUS_CODE, and a TOOL_MISUSE unsafe-default must not surface as MALICIOUS_CODE.
 describe('TOOL_MISUSE overlap', () => {
