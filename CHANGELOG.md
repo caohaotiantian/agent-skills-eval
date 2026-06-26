@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **8 agent-behavioral security categories** (clean-room derived from SkillSpector's threat taxonomy) in `skill-sec-rules.yaml`, bringing the total to 17: `ANTI_REFUSAL` (jailbreak/guardrail suppression), `SYSTEM_PROMPT_LEAKAGE`, `MEMORY_POISONING`, `EXCESSIVE_AGENCY`, `OUTPUT_HANDLING`, `TOOL_MISUSE` (unsafe-defaults slice), `ROGUE_AGENT` (self-modification), and `AGENT_SNOOPING` (least-knowledge / cross-skill isolation). Each ships with a CVSS 3.1 vector and positive/clean test fixtures.
+- **`markdownScan: prose` category flag**: a category can opt into scanning full `SKILL.md` prose (not just fenced code blocks) and applying `markdownConfidence`. Generalizes the previous `PROMPT_INJECTION`-only special case; default (code-block-only) behavior is unchanged for all existing categories.
+
+### Changed
+
+- Scan engine markdown gate is now category-driven (`_isProseRule` keyed off `markdownScan`) instead of hard-coding `PROMPT_INJECTION`; `rule-loader` propagates the flag onto each rule.
+
 ## [1.1.0] - 2026-04-15
 
 ### Added
