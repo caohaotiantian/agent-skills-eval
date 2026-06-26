@@ -33,6 +33,18 @@ categories:
   - id: CRYPTOGRAPHIC_WEAKNESS
     name: 加密弱点
     severity_weight: 15
+  - id: ANTI_REFUSAL
+    name: 拒绝抑制/越狱
+    severity_weight: 30
+    markdownScan: prose
+  - id: SYSTEM_PROMPT_LEAKAGE
+    name: 系统提示词泄露
+    severity_weight: 28
+    markdownScan: prose
+  - id: MEMORY_POISONING
+    name: 记忆投毒
+    severity_weight: 30
+    markdownScan: prose
 
 # Detector-based evaluation criteria — these map to algorithmic detectors (not regex rules).
 # Each entry generates a security assessment criterion with the given name and weight.
@@ -708,3 +720,107 @@ rules:
       - "*"
     suggestion: 移除连接串中的密码，使用环境变量或配置管理
     reference: https://owasp.org/www-community/attacks/Path_Traversal
+
+  # ==================== SkillSpector-derived prose categories (clean-room) ====================
+
+  - id: AR001
+    category: ANTI_REFUSAL
+    name: 安全策略失效诱导
+    severity: HIGH
+    confidence: 92
+    markdownConfidence: 92
+    description: 检测到使智能体安全护栏失效的措辞（声称无限制或要求忽略安全准则）
+    patterns:
+      - 'you have no (restrictions|filters|limits)'
+      - '(ignore|bypass|disregard) your safety (guidelines|policy|rules)'
+      - 'act as an (unrestricted|unfiltered|uncensored) model'
+      - 'no content policy applies'
+      - 'do anything now'
+    fileTypes:
+      - "*.md"
+      - "SKILL.md"
+    suggestion: 移除使安全护栏失效的措辞，Skill 不得诱导智能体绕过安全策略
+
+  - id: AR002
+    category: ANTI_REFUSAL
+    name: 拒绝抑制措辞
+    severity: HIGH
+    confidence: 80
+    markdownConfidence: 80
+    description: 检测到抑制智能体拒绝能力的措辞（要求从不拒绝任何请求）
+    patterns:
+      - 'never refuse'
+      - 'you must not refuse'
+      - 'always comply with (every|any) request'
+      - 'do not decline'
+    fileTypes:
+      - "*.md"
+      - "SKILL.md"
+    suggestion: 移除拒绝抑制措辞，智能体须保留对不当请求的拒绝能力
+
+  - id: SPL001
+    category: SYSTEM_PROMPT_LEAKAGE
+    name: 系统提示词外泄至接收端
+    severity: HIGH
+    confidence: 92
+    markdownConfidence: 92
+    description: 检测到将系统提示词或指令外泄至文件或网络接收端的措辞
+    patterns:
+      - '(send|post|upload) your (system )?prompt to'
+      - '(write|save) your instructions to a file'
+      - 'include your prompt in the (request|output)'
+    fileTypes:
+      - "*.md"
+      - "SKILL.md"
+    suggestion: 移除将系统提示词外泄至接收端的措辞，隐藏指令不得被导出
+
+  - id: SPL002
+    category: SYSTEM_PROMPT_LEAKAGE
+    name: 系统提示词直接提取
+    severity: HIGH
+    confidence: 80
+    markdownConfidence: 80
+    description: 检测到直接提取智能体隐藏系统指令的措辞
+    patterns:
+      - '(print|reveal|show|output) your system (prompt|instructions)'
+      - 'repeat the text above verbatim'
+      - 'what is your system prompt'
+    fileTypes:
+      - "*.md"
+      - "SKILL.md"
+    suggestion: 移除提取系统提示词的措辞，隐藏指令不得被泄露
+
+  - id: MP001
+    category: MEMORY_POISONING
+    name: 记忆篡改
+    severity: HIGH
+    confidence: 92
+    markdownConfidence: 92
+    description: 检测到篡改、覆盖或重置智能体记忆与指令的措辞
+    patterns:
+      - 'forget all previous instructions'
+      - '(overwrite|replace) your (memory|instructions)'
+      - 'inject (false|fabricated) memories'
+      - 'you are no longer an assistant'
+      - 'reset your memory and adopt'
+    fileTypes:
+      - "*.md"
+      - "SKILL.md"
+    suggestion: 移除篡改记忆的措辞，Skill 不得操纵或清除智能体记忆
+
+  - id: MP002
+    category: MEMORY_POISONING
+    name: 持久化记忆注入
+    severity: HIGH
+    confidence: 80
+    markdownConfidence: 80
+    description: 检测到向智能体记忆植入持久化内容的措辞
+    patterns:
+      - 'from now on permanently'
+      - 'always remember this for all future sessions'
+      - '(store|persist) this in your memory permanently'
+      - 'never forget this instruction'
+    fileTypes:
+      - "*.md"
+      - "SKILL.md"
+    suggestion: 移除持久化记忆注入措辞，Skill 不得跨会话植入持久指令
