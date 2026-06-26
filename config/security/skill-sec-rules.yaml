@@ -45,6 +45,18 @@ categories:
     name: 记忆投毒
     severity_weight: 30
     markdownScan: prose
+  - id: EXCESSIVE_AGENCY
+    name: 越权自主行为
+    severity_weight: 22
+    markdownScan: prose
+  - id: OUTPUT_HANDLING
+    name: 输出处理不当
+    severity_weight: 30
+    markdownScan: prose
+  - id: TOOL_MISUSE
+    name: 工具滥用-不安全默认
+    severity_weight: 22
+    markdownScan: prose
 
 # Detector-based evaluation criteria — these map to algorithmic detectors (not regex rules).
 # Each entry generates a security assessment criterion with the given name and weight.
@@ -824,3 +836,103 @@ rules:
       - "*.md"
       - "SKILL.md"
     suggestion: 移除持久化记忆注入措辞，Skill 不得跨会话植入持久指令
+
+  - id: EA001
+    category: EXCESSIVE_AGENCY
+    name: 无确认自主执行
+    severity: MEDIUM
+    confidence: 78
+    markdownConfidence: 78
+    description: 检测到在无用户确认下自主执行高危操作的措辞
+    patterns:
+      - '(execute|run|delete|send|deploy)[^\n]{0,40}without (asking|confirmation|approval|consent)'
+      - 'proceed without waiting for permission'
+      - 'assume (the )?user(\x27s)? consent'
+    fileTypes:
+      - "*.md"
+      - "SKILL.md"
+    suggestion: 移除无确认自主执行的措辞，高危操作须先获得用户确认
+
+  - id: EA002
+    category: EXCESSIVE_AGENCY
+    name: 自动批准跳过确认
+    severity: MEDIUM
+    confidence: 72
+    markdownConfidence: 72
+    description: 检测到使用自动批准标志跳过用户确认提示
+    patterns:
+      - '--auto-approve'
+      - '--no-confirm'
+      - '--yes\b[^\n]{0,30}(skip|prompt|confirm)'
+    fileTypes:
+      - "*.md"
+      - "SKILL.md"
+      - "*.sh"
+      - "*.py"
+      - "*.js"
+    suggestion: 移除自动批准标志，保留交互式确认提示
+
+  - id: OH001
+    category: OUTPUT_HANDLING
+    name: 未校验输出送入执行接收端
+    severity: HIGH
+    confidence: 92
+    markdownConfidence: 92
+    description: 检测到将模型或生成输出未经校验直接送入执行或求值接收端
+    patterns:
+      - 'run the (generated|model|llm) output'
+      - 'pipe the output (directly )?to (the )?shell'
+      - 'pass the (model|generated) output to (exec|eval)'
+      - '(eval|exec)\s*\(\s*model_output'
+    fileTypes:
+      - "*.md"
+      - "SKILL.md"
+      - "*.py"
+      - "*.js"
+    suggestion: 对模型或工具输出先行校验，不得直接送入 shell/exec/eval 等执行接收端
+
+  - id: TM001
+    category: TOOL_MISUSE
+    name: 不安全默认-TLS校验关闭
+    severity: MEDIUM
+    confidence: 85
+    markdownConfidence: 85
+    description: 检测到关闭 TLS/证书校验的不安全默认配置
+    patterns:
+      - 'verify\s*=\s*False'
+      - 'ssl_verify\s*[=:]\s*(false|0|off)'
+      - 'NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*0'
+      - '--no-check-certificate'
+      - 'rejectUnauthorized\s*:\s*false'
+    fileTypes:
+      - "*.md"
+      - "SKILL.md"
+      - "*.py"
+      - "*.js"
+      - "*.ts"
+      - "*.yaml"
+      - "*.yml"
+      - "*.json"
+    suggestion: 启用 TLS/证书校验，移除关闭校验的不安全默认
+
+  - id: TM002
+    category: TOOL_MISUSE
+    name: 不安全默认-认证与CORS
+    severity: MEDIUM
+    confidence: 75
+    markdownConfidence: 75
+    description: 检测到禁用认证或过度宽松 CORS 的不安全默认配置
+    patterns:
+      - 'allow_anonymous\s*[=:]\s*true'
+      - 'require_auth\s*[=:]\s*false'
+      - 'allow_origin\s*[=:]\s*[\x27"]?\*'
+    fileTypes:
+      - "*.md"
+      - "SKILL.md"
+      - "*.py"
+      - "*.js"
+      - "*.ts"
+      - "*.yaml"
+      - "*.yml"
+      - "*.json"
+    suggestion: 启用认证并使用 CORS 白名单，移除禁用认证或通配放行的不安全默认
