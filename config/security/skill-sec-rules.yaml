@@ -20,6 +20,7 @@ categories:
   - id: PROMPT_INJECTION
     name: Prompt注入
     severity_weight: 30
+    markdownScan: prose
   - id: DEPENDENCY
     name: 依赖安全
     severity_weight: 20
