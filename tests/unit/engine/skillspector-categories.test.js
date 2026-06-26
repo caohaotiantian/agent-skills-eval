@@ -77,6 +77,38 @@ for (const { id, kebab, tier } of PHASE3_CATEGORIES) {
   });
 }
 
+// Phase 4 categories — code-evidence HIGH (ROGUE_AGENT, AGENT_SNOOPING).
+const PHASE4_CATEGORIES = [
+  { id: 'ROGUE_AGENT', kebab: 'rogue-agent', tier: 'HIGH' },
+  { id: 'AGENT_SNOOPING', kebab: 'agent-snooping', tier: 'HIGH' }
+];
+
+for (const { id, kebab, tier } of PHASE4_CATEGORIES) {
+  describe(id, () => {
+    it(`AC1 ${id}: detects its threat signal in the positive fixture`, async () => {
+      const result = await scanCategory(kebab, 'positive');
+      const hits = result.findings.filter(f => f.category === id);
+      expect(hits.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it(`AC2 ${id}: does not fire on benign own-file-access fixture (clean fixture)`, async () => {
+      const result = await scanCategory(kebab, 'clean');
+      const hits = result.findings.filter(f => f.category === id);
+      expect(hits.length).toBe(0);
+    });
+
+    it(`AC3 ${id}: every positive finding carries non-null CVSS rated ${tier}`, async () => {
+      const result = await scanCategory(kebab, 'positive');
+      const hits = result.findings.filter(f => f.category === id);
+      expect(hits.length).toBeGreaterThanOrEqual(1);
+      for (const f of hits) {
+        expect(f.cvss).not.toBeNull();
+        expect(f.cvss.severityRating).toBe(tier);
+      }
+    });
+  });
+}
+
 // Per-rule firing guard — AC1 only asserts >=1 finding per CATEGORY, so it is satisfied
 // by TM001/EA001 alone and leaves TM002 (auth-disabled / permissive-CORS) and EA002
 // (auto-approve flags) unverified. These guard their detection (not just compilation).
@@ -90,6 +122,18 @@ describe('per-rule firing', () => {
   it('TM002: auth-disabled / permissive-CORS default in positive fixture yields a TM002 finding', async () => {
     const result = await scanCategory('tool-misuse', 'positive');
     const hits = result.findings.filter(f => f.ruleId === 'TM002');
+    expect(hits.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('RA002: self-modification NL phrasing in positive fixture yields an RA002 finding', async () => {
+    const result = await scanCategory('rogue-agent', 'positive');
+    const hits = result.findings.filter(f => f.ruleId === 'RA002');
+    expect(hits.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('AS002: peer-skill enumeration NL phrasing in positive fixture yields an AS002 finding', async () => {
+    const result = await scanCategory('agent-snooping', 'positive');
+    const hits = result.findings.filter(f => f.ruleId === 'AS002');
     expect(hits.length).toBeGreaterThanOrEqual(1);
   });
 });
