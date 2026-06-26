@@ -1,0 +1,41 @@
+info:
+  name: prose-scan-test-rules
+  version: "1.0.0"
+  description: Test rules exercising the markdownScan prose flag
+
+categories:
+  - id: PROSE_CAT
+    name: 散文扫描测试类别
+    severity_weight: 30
+    markdownScan: prose
+  - id: CODE_ONLY_CAT
+    name: 仅代码块测试类别
+    severity_weight: 20
+
+rules:
+  - id: PROSE001
+    category: PROSE_CAT
+    name: 散文标记规则
+    severity: MEDIUM
+    confidence: 90
+    markdownConfidence: 90
+    description: 匹配散文中的标记短语
+    patterns:
+      - "prose-probe-marker"
+    fileTypes:
+      - "*.md"
+      - "SKILL.md"
+    suggestion: 测试用规则
+
+  - id: CODEONLY001
+    category: CODE_ONLY_CAT
+    name: 仅代码块标记规则
+    severity: MEDIUM
+    confidence: 90
+    description: 仅在代码块内匹配标记短语
+    patterns:
+      - "prose-probe-marker"
+    fileTypes:
+      - "*.md"
+      - "SKILL.md"
+    suggestion: 测试用规则
