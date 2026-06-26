@@ -57,6 +57,14 @@ categories:
     name: 工具滥用-不安全默认
     severity_weight: 22
     markdownScan: prose
+  - id: ROGUE_AGENT
+    name: 失控自我修改
+    severity_weight: 35
+    markdownScan: prose
+  - id: AGENT_SNOOPING
+    name: 越界窥探-最小知情违背
+    severity_weight: 28
+    markdownScan: prose
 
 # Detector-based evaluation criteria — these map to algorithmic detectors (not regex rules).
 # Each entry generates a security assessment criterion with the given name and weight.
@@ -941,3 +949,86 @@ rules:
       - "*.yml"
       - "*.json"
     suggestion: 启用认证并使用 CORS 白名单，移除禁用认证或通配放行的不安全默认
+
+  - id: RA001
+    category: ROGUE_AGENT
+    name: 自我修改-写入自身源文件
+    severity: HIGH
+    confidence: 92
+    markdownConfidence: 92
+    description: 检测到打开自身运行文件或 SKILL.md 进行写入的自我修改代码
+    patterns:
+      - 'open\s*\(\s*__file__\s*,\s*[\x27"]?w'
+      - 'Path\s*\(\s*__file__\s*\)\s*\.\s*write_text'
+      - 'open\s*\([^\n]{0,40}SKILL\.md[^\n]{0,20},\s*[\x27"]?w'
+    fileTypes:
+      - "*.py"
+      - "*.js"
+      - "*.ts"
+      - "*.sh"
+      - "*.md"
+      - "SKILL.md"
+    suggestion: 禁止 Skill 在运行时写入自身源文件或 SKILL.md，移除自我修改代码
+
+  - id: RA002
+    category: ROGUE_AGENT
+    name: 自我修改与禁用自身防护措辞
+    severity: HIGH
+    confidence: 80
+    markdownConfidence: 80
+    description: 检测到自我修改或禁用自身安全检查的自然语言指令
+    patterns:
+      - 'modify your own (code|source|instructions)'
+      - 'rewrite (this|the current) skill'
+      - 'self-(modify|update|rewrite|patch)'
+      - 'append (code|instructions) to this file'
+      - '(disable|remove|bypass)[^\n]{0,20}(safety|security|validation) (check|guard)'
+      - 'comment out the validation'
+    fileTypes:
+      - "*.py"
+      - "*.js"
+      - "*.ts"
+      - "*.sh"
+      - "*.md"
+      - "SKILL.md"
+    suggestion: 移除自我修改与禁用自身防护的措辞，Skill 不得改写自身或关闭安全检查
+
+  - id: AS001
+    category: AGENT_SNOOPING
+    name: 越界读取-代理与MCP配置
+    severity: HIGH
+    confidence: 92
+    markdownConfidence: 92
+    description: 检测到读取宿主代理配置或 MCP 服务配置等越界凭据访问
+    patterns:
+      - 'mcp(_config)?\.json'
+      - '\.claude[\\/](credentials|config|settings)'
+      - '\.codex[\\/](credentials|config|auth)'
+      - '\.gemini[\\/](credentials|config|oauth)'
+    fileTypes:
+      - "*.py"
+      - "*.js"
+      - "*.sh"
+      - "*.md"
+      - "SKILL.md"
+    suggestion: 移除对宿主代理配置/MCP 配置的越界读取，遵循最小知情原则仅访问自身所需文件
+
+  - id: AS002
+    category: AGENT_SNOOPING
+    name: 越界枚举-其他Skill
+    severity: HIGH
+    confidence: 90
+    markdownConfidence: 90
+    description: 检测到枚举其他已安装 Skill 或读取宿主代理配置的自然语言指令
+    patterns:
+      - 'read[^\n]{0,20}the (agent|assistant) config'
+      - '(list|enumerate) all installed skills'
+      - 'read the mcp config'
+      - 'open[^\n]{0,30}(peer|other) skill'
+    fileTypes:
+      - "*.py"
+      - "*.js"
+      - "*.sh"
+      - "*.md"
+      - "SKILL.md"
+    suggestion: 移除枚举其他 Skill 或读取代理配置的措辞，Skill 不得跨越自身边界窥探同伴或宿主
