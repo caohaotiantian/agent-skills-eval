@@ -516,6 +516,7 @@ program
   .option('-o, --output <file>', 'Report output path')
   .option('--output-dir <dir>', 'Output directory for results')
   .option('-c, --concurrency <number>', 'Max parallel prompt executions', (v) => parseInt(v, 10), 1)
+  .option('--pipeline-concurrency <number>', 'Max skills run in parallel per backend (default 4)', (v) => parseInt(v, 10))
   .option('--skip-generate', 'Skip test generation (use existing prompts)')
   .option('--backends <names>', 'Comma-separated backends for comparative evaluation')
   .option('--skip-dynamic', 'Skip dynamic execution and trace analysis')
@@ -539,6 +540,7 @@ program
         backend: options.backend,
         backends,
         concurrency: options.concurrency,
+        pipelineConcurrency: options.pipelineConcurrency,
         useLLM: options.llm === true,
         llmJudge: options.llmJudge,
         llmSuggestion: options.llmSuggestion,

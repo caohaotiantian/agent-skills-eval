@@ -79,6 +79,7 @@ module.exports = {
   runner: {
     backend: 'claude-code',         // Default backend (overridden by CLI -b flag)
     timeout: 300000,                // Per-prompt execution timeout (ms)
+    pipelineConcurrency: 4,         // Skills run in parallel per backend in the pipeline (CLI: --pipeline-concurrency)
     backends: {
       'mock': {},
       'openai-compatible': {
@@ -86,7 +87,7 @@ module.exports = {
       },
       'codex': {
         command: 'codex',
-        args: ['exec', '--json', '--full-auto']
+        args: ['exec', '--json', '--skip-git-repo-check', '--sandbox', 'workspace-write']
       },
       'claude-code': {
         command: 'claude',
