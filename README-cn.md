@@ -573,7 +573,7 @@ agent-skills-eval gen writing-skills --llm
 |------|------|------|
 | `mock` | （合成） | 返回模拟 trace 事件，用于管线测试 |
 | `openai-compatible` | OpenAI API 调用 | 任意 OpenAI 兼容端点（LM Studio、Ollama、vLLM、OpenRouter 等） |
-| `codex` | `codex exec --json --full-auto` | OpenAI Codex CLI 智能体 |
+| `codex` | `codex exec --json --skip-git-repo-check --sandbox workspace-write` | OpenAI Codex CLI 智能体 |
 | `claude-code` | `claude -p --output-format stream-json` | Claude Code CLI 智能体 |
 | `opencode` | `opencode run --format json` | OpenCode CLI 智能体 |
 
@@ -975,7 +975,7 @@ module.exports = {
       },
       'codex': {
         command: 'codex',
-        args: ['exec', '--json', '--full-auto']
+        args: ['exec', '--json', '--skip-git-repo-check', '--sandbox', 'workspace-write']
       },
       'claude-code': {
         command: 'claude',

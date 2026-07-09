@@ -27,7 +27,7 @@ Evaluate an Agent Skill inside a Docker container.
 Options:
   -e KEY=VALUE        Set environment variable (repeatable)
   --env-file FILE     Load env vars from file (default: .env if exists)
-  -b, --backend NAME  Force backend (claude-code|opencode|openai-compatible|mock)
+  -b, --backend NAME  Force backend (claude-code|opencode|codex|openai-compatible|mock)
   -o, --output DIR    Output directory (default: $DEFAULT_OUTPUT)
   --build             Force rebuild Docker image
   --llm               Enable LLM-powered test generation (also auto-enables --llm-suggestion)
@@ -218,7 +218,22 @@ printf "║  Output:  %-40s║\n" "$OUTPUT_DIR"
 echo "╚══════════════════════════════════════════════════╝"
 echo ""
 
-# Symlink mounted skill into a discoverable location, then run pipeline
+# Symlink mounted skill into a discoverable location, then run pipeline.
+# The ~/.claude/skills symlink is required by the pipeline's discovery,
+# static-eval, and prompt-generation stages for EVERY backend — those stages are
+# backend-independent. The backend only decides which agent CLI runs the
+# generated prompts. claude-code additionally auto-loads the skill from that
+# directory during dynamic execution. opencode and codex have no dedicated
+# skills directory (opencode 1.17.15 exposes no `skills` command), so their
+# dynamic execution is prompt-based: the skill drives discovery and prompt
+# generation, and the agent runs those prompts.
+case "$BACKEND" in
+  opencode|codex)
+    echo "Note: $BACKEND has no dedicated skills directory — evaluation is prompt-based"
+    echo "      (the skill drives discovery + prompt generation; $BACKEND runs the prompts)."
+    ;;
+esac
+
 # Run as root inside container (avoids bind-mount permission issues with
 # rootless Docker, userns-remap, and SELinux), then chown output to host user
 HOST_UID=$(id -u)
@@ -240,7 +255,7 @@ docker run --rm \
   "${SHELL_ENV_ARGS[@]+"${SHELL_ENV_ARGS[@]}"}" \
   --entrypoint sh \
   "$IMAGE_NAME" \
-  -c "mkdir -p ~/.claude/skills && ln -s /workspace/skill ~/.claude/skills/$SKILL_NAME && agent-skills-eval ${PIPELINE_ARGS[*]}; EXIT_CODE=\$?; chown -R $HOST_UID:$HOST_GID /workspace/output 2>/dev/null; exit \$EXIT_CODE"
+  -c "mkdir -p ~/.claude/skills && ln -s /workspace/skill ~/.claude/skills/$SKILL_NAME && agent-provider-setup $BACKEND && agent-skills-eval ${PIPELINE_ARGS[*]}; EXIT_CODE=\$?; chown -R $HOST_UID:$HOST_GID /workspace/output 2>/dev/null; exit \$EXIT_CODE"
 
 # ---- Print results ----
 echo ""

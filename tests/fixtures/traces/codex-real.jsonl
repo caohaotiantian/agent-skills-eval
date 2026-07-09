@@ -1,0 +1,5 @@
+{"type":"thread.started","thread_id":"019f4508-94bb-7743-a341-c51daf266751"}
+{"type":"item.completed","item":{"id":"item_0","type":"error","message":"Model metadata for `GLM-5.1` not found. Defaulting to fallback metadata; this can degrade performance and cause issues."}}
+{"type":"turn.started"}
+{"type":"error","message":"{\"error\":{\"message\":\"litellm.BadRequestError: DashscopeException - 'function' is a required property, expected an object - 'tools.5'. Received Model Group=GLM-5.1\\nAvailable Model Group Fallbacks=None\",\"type\":\"invalid_request_error\",\"param\":null,\"code\":\"400\"}}"}
+{"type":"turn.failed","error":{"message":"{\"error\":{\"message\":\"litellm.BadRequestError: DashscopeException - 'function' is a required property, expected an object - 'tools.5'. Received Model Group=GLM-5.1\\nAvailable Model Group Fallbacks=None\",\"type\":\"invalid_request_error\",\"param\":null,\"code\":\"400\"}}"}}

@@ -577,7 +577,7 @@ The `run` command executes test prompts through configurable agent backends and 
 |---------|---------|-------------|
 | `mock` | (synthetic) | Returns fake trace events for pipeline testing |
 | `openai-compatible` | OpenAI API call | Any OpenAI-compatible endpoint (LM Studio, Ollama, vLLM, OpenRouter, etc.) |
-| `codex` | `codex exec --json --full-auto` | OpenAI Codex CLI agent |
+| `codex` | `codex exec --json --skip-git-repo-check --sandbox workspace-write` | OpenAI Codex CLI agent |
 | `claude-code` | `claude -p --output-format stream-json` | Claude Code CLI agent |
 | `opencode` | `opencode run --format json` | OpenCode CLI agent |
 
@@ -600,6 +600,32 @@ All backends normalize their output to a unified JSONL format:
 {"type":"message","content":"...","timestamp":"..."}
 {"type":"turn.completed","timestamp":"..."}
 ```
+
+Each CLI backend maps its native event stream into this format: Claude Code's
+`stream-json` assistant/result events, OpenCode's `step_start`/`tool_use`/`text`/
+`step_finish` parts, and Codex's `thread`/`turn`/`item` events (`command_execution`
+and `agent_message` items become `tool_call`/`tool_result`/`message`; `turn.completed`
+usage becomes a token `result`).
+
+### Codex backend notes
+
+- **Invocation**: `codex exec --json --skip-git-repo-check --sandbox workspace-write`.
+  `--skip-git-repo-check` is required (codex refuses to run in a non-git directory);
+  `--full-auto` is deprecated in current codex CLIs in favor of `--sandbox workspace-write`.
+- **Custom (non-OpenAI) endpoints**: pointing codex at an OpenAI-compatible endpoint
+  requires `wire_api = "responses"` in the provider config (codex dropped `wire_api = "chat"`
+  for custom providers), and the endpoint must implement the Responses API and codex's
+  function-calling format — not every OpenAI-compatible proxy does.
+- **Skill loading**: codex and opencode have no dedicated skills directory. Evaluation is
+  **prompt-based** — the skill drives discovery and test-prompt generation, and the agent
+  runs those prompts. Only claude-code auto-loads the skill during dynamic execution.
+
+### Pipeline concurrency
+
+The pipeline runs skills in parallel per backend during dynamic execution. Control the pool
+size with `--pipeline-concurrency <n>` (CLI) or `runner.pipelineConcurrency` (config file);
+the default is `4`. Use `1` for fully serial execution. This is distinct from `-c,
+--concurrency`, which parallelizes prompt executions *within* a single skill.
 
 ---
 
@@ -979,7 +1005,7 @@ module.exports = {
       },
       'codex': {
         command: 'codex',
-        args: ['exec', '--json', '--full-auto']
+        args: ['exec', '--json', '--skip-git-repo-check', '--sandbox', 'workspace-write']
       },
       'claude-code': {
         command: 'claude',

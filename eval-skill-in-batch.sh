@@ -165,8 +165,8 @@ PASSED=0
 FAILED=0
 FAILED_SKILLS=()
 ACTIVE_PIDS=()
-declare -A PID_SKILL_MAP
-declare -A PID_LOG_MAP
+# PID→skill / PID→log are kept in dynamic variables (PIDSKILL_<pid> / PIDLOG_<pid>)
+# rather than associative arrays, so the script runs on bash 3.2 (macOS default).
 
 cleanup_jobs() {
   for pid in "${ACTIVE_PIDS[@]+"${ACTIVE_PIDS[@]}"}"; do
@@ -183,16 +183,16 @@ wait_for_slot() {
       if kill -0 "$pid" 2>/dev/null; then
         new_pids+=("$pid")
       else
+        local sk_var="PIDSKILL_$pid" lg_var="PIDLOG_$pid"
         wait "$pid" && {
           PASSED=$((PASSED + 1))
-          echo "  ✓ ${PID_SKILL_MAP[$pid]}"
+          echo "  ✓ ${!sk_var}"
         } || {
           FAILED=$((FAILED + 1))
-          FAILED_SKILLS+=("${PID_SKILL_MAP[$pid]}")
-          echo "  ✗ ${PID_SKILL_MAP[$pid]} (see ${PID_LOG_MAP[$pid]})"
+          FAILED_SKILLS+=("${!sk_var}")
+          echo "  ✗ ${!sk_var} (see ${!lg_var})"
         }
-        unset "PID_SKILL_MAP[$pid]"
-        unset "PID_LOG_MAP[$pid]"
+        unset "$sk_var" "$lg_var"
       fi
     done
     ACTIVE_PIDS=("${new_pids[@]+"${new_pids[@]}"}")
@@ -204,13 +204,14 @@ wait_for_slot() {
 
 drain_jobs() {
   for pid in "${ACTIVE_PIDS[@]+"${ACTIVE_PIDS[@]}"}"; do
+    local sk_var="PIDSKILL_$pid" lg_var="PIDLOG_$pid"
     wait "$pid" && {
       PASSED=$((PASSED + 1))
-      echo "  ✓ ${PID_SKILL_MAP[$pid]}"
+      echo "  ✓ ${!sk_var}"
     } || {
       FAILED=$((FAILED + 1))
-      FAILED_SKILLS+=("${PID_SKILL_MAP[$pid]}")
-      echo "  ✗ ${PID_SKILL_MAP[$pid]} (see ${PID_LOG_MAP[$pid]})"
+      FAILED_SKILLS+=("${!sk_var}")
+      echo "  ✗ ${!sk_var} (see ${!lg_var})"
     }
   done
   ACTIVE_PIDS=()
@@ -234,8 +235,8 @@ for skill_path in "${SKILL_PATHS[@]}"; do
 
   pid=$!
   ACTIVE_PIDS+=("$pid")
-  PID_SKILL_MAP[$pid]="$skill_name"
-  PID_LOG_MAP[$pid]="$log_file"
+  printf -v "PIDSKILL_$pid" '%s' "$skill_name"
+  printf -v "PIDLOG_$pid" '%s' "$log_file"
 done
 
 drain_jobs

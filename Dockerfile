@@ -1,6 +1,6 @@
 # ============================================================
 # Agent Skills Evaluation — Docker Image
-# Single stage: npm install + Claude Code + OpenCode
+# Single stage: npm install + OpenCode + Codex (default backend: opencode)
 # ============================================================
 FROM node:20-slim
 
@@ -19,7 +19,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install the evaluation tool
+# Install the CLI agents via npm (OpenCode + Codex) FIRST — this is the slow
+# layer (downloads platform binaries) and rarely changes, so it stays cached
+# even when the app code below is edited.
+# opencode-ai is the maintained npm package; the old github release tarball is stale.
+RUN npm install -g opencode-ai @openai/codex && npm cache clean --force
+
+# --- Claude Code (disabled: default backend is opencode; re-enable if needed) ---
+# RUN npm install -g @anthropic-ai/claude-code@2.1.109 && npm cache clean --force
+# RUN mkdir -p /root/.claude && \
+#     echo '{"hasCompletedOnboarding": true, "bypassPermissionsModeAccepted": true}' > /root/.claude.json
+
+# Container-side provider setup (generates opencode/codex config from env vars at run time)
+COPY docker/agent-provider-setup.sh /usr/local/bin/agent-provider-setup
+RUN chmod +x /usr/local/bin/agent-provider-setup
+
+# Install the evaluation tool. App deps first (cached unless package.json changes),
+# then the app source (changes often — kept last so edits don't bust the layers above).
 WORKDIR /opt/agent-skills-eval
 COPY package.json package-lock.json* ./
 RUN npm install --production && npm cache clean --force
@@ -30,24 +46,6 @@ COPY config/ config/
 COPY types/ types/
 RUN chmod +x bin/cli.js && ln -s /opt/agent-skills-eval/bin/cli.js /usr/local/bin/agent-skills-eval \
     && chmod -R a+rX /opt/agent-skills-eval
-
-# Install Claude Code CLI
-RUN npm install -g @anthropic-ai/claude-code@2.1.109 && npm cache clean --force
-
-# Pre-complete onboarding so containers don't prompt for login when using a custom provider.
-# ANTHROPIC_BASE_URL / ANTHROPIC_AUTH_TOKEN should be passed at `docker run` time via -e.
-RUN mkdir -p /root/.claude && \
-    echo '{"hasCompletedOnboarding": true, "bypassPermissionsModeAccepted": true}' > /root/.claude.json
-
-# Install OpenCode (latest release binary)
-RUN ARCH=$(uname -m) && \
-    if [ "$ARCH" = "x86_64" ]; then ARCH="amd64"; fi && \
-    if [ "$ARCH" = "aarch64" ]; then ARCH="arm64"; fi && \
-    curl -fsSL "https://github.com/opencode-ai/opencode/releases/latest/download/opencode_linux_${ARCH}.tar.gz" \
-      -o /tmp/opencode.tar.gz && \
-    tar -xzf /tmp/opencode.tar.gz -C /usr/local/bin/ opencode && \
-    chmod +x /usr/local/bin/opencode && \
-    rm /tmp/opencode.tar.gz || echo "WARN: OpenCode install failed, claude-code backend still available"
 
 # Set up workspace
 WORKDIR /workspace
