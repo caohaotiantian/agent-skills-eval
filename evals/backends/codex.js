@@ -11,6 +11,7 @@
  */
 
 const { spawn } = require('child_process');
+const { makeAgentWorkDir } = require('./workdir');
 
 function run(prompt, options = {}) {
   const { verbose = false, timeout = 300000, config = {} } = options;
@@ -22,9 +23,17 @@ function run(prompt, options = {}) {
     console.error(`  [codex] Running: ${command} ${args.join(' ').substring(0, 120)}...`);
   }
 
+  // Run the agent in an isolated empty directory (see workdir.js): keeps the
+  // agent off the evaluation tool's own repo and contains any files it writes.
+  const { workDir, cleanup } = makeAgentWorkDir('codex');
+
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
-      env: { ...process.env }
+      env: { ...process.env },
+      cwd: workDir,
+      // Close stdin: codex reads additional input from stdin and blocks when it
+      // is an open pipe (the default), which hangs the run until the timeout.
+      stdio: ['ignore', 'pipe', 'pipe']
     });
 
     let stdout = '';
@@ -35,16 +44,19 @@ function run(prompt, options = {}) {
 
     const timer = setTimeout(() => {
       child.kill();
+      cleanup();
       resolve({ stdout: normaliseCodexTrace(stdout), stderr, exitCode: 1 });
     }, timeout);
 
     child.on('close', (code) => {
       clearTimeout(timer);
+      cleanup();
       resolve({ stdout: normaliseCodexTrace(stdout), stderr, exitCode: code ?? 1 });
     });
 
     child.on('error', (err) => {
       clearTimeout(timer);
+      cleanup();
       resolve({ stdout: normaliseCodexTrace(stdout), stderr: stderr + err.message, exitCode: 1 });
     });
   });

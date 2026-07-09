@@ -255,7 +255,7 @@ docker run --rm \
   "${SHELL_ENV_ARGS[@]+"${SHELL_ENV_ARGS[@]}"}" \
   --entrypoint sh \
   "$IMAGE_NAME" \
-  -c "mkdir -p ~/.claude/skills && ln -s /workspace/skill ~/.claude/skills/$SKILL_NAME && agent-skills-eval ${PIPELINE_ARGS[*]}; EXIT_CODE=\$?; chown -R $HOST_UID:$HOST_GID /workspace/output 2>/dev/null; exit \$EXIT_CODE"
+  -c "mkdir -p ~/.claude/skills && ln -s /workspace/skill ~/.claude/skills/$SKILL_NAME && agent-provider-setup $BACKEND && agent-skills-eval ${PIPELINE_ARGS[*]}; EXIT_CODE=\$?; chown -R $HOST_UID:$HOST_GID /workspace/output 2>/dev/null; exit \$EXIT_CODE"
 
 # ---- Print results ----
 echo ""

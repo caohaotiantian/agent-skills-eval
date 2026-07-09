@@ -29,3 +29,6 @@ evals/artifacts/
 
 # User-provided security rules override (project root only, not tracked)
 /skill-sec-rules.yaml
+
+# Batch eval output (eval-skill.sh -o default)
+eval-results/

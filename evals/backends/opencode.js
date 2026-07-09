@@ -13,6 +13,7 @@
  */
 
 const { spawn } = require('child_process');
+const { makeAgentWorkDir } = require('./workdir');
 
 function run(prompt, options = {}) {
   const { verbose = false, timeout = 300000, config = {} } = options;
@@ -24,9 +25,23 @@ function run(prompt, options = {}) {
     console.error(`  [opencode] Running: ${command} run --format json "${prompt.substring(0, 80)}..."`);
   }
 
+  // Run the agent in an isolated empty directory. opencode scans its working
+  // directory on startup, which hangs when it inherits the evaluation tool's
+  // own large repo — an empty scratch dir keeps startup fast and isolates any
+  // files the agent writes.
+  const { workDir, cleanup } = makeAgentWorkDir('opencode');
+
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
-      env: { ...process.env }
+      // Isolate the session store (XDG_DATA_HOME) per run: concurrent opencode
+      // instances contend on the shared ~/.local/share/opencode store and
+      // silently produce no output. The provider config in XDG_CONFIG_HOME
+      // (~/.config/opencode) is left untouched so it is still found.
+      env: { ...process.env, XDG_DATA_HOME: require('path').join(workDir, 'xdg-data') },
+      cwd: workDir,
+      // Close stdin: opencode blocks waiting for piped input when stdin is an
+      // open pipe (the default), which hangs the run until the timeout.
+      stdio: ['ignore', 'pipe', 'pipe']
     });
 
     let stdout = '';
@@ -37,16 +52,19 @@ function run(prompt, options = {}) {
 
     const timer = setTimeout(() => {
       child.kill();
+      cleanup();
       resolve({ stdout: normaliseOpenCodeTrace(stdout), stderr, exitCode: 1 });
     }, timeout);
 
     child.on('close', (code) => {
       clearTimeout(timer);
+      cleanup();
       resolve({ stdout: normaliseOpenCodeTrace(stdout), stderr, exitCode: code ?? 1 });
     });
 
     child.on('error', (err) => {
       clearTimeout(timer);
+      cleanup();
       resolve({ stdout: normaliseOpenCodeTrace(stdout), stderr: stderr + err.message, exitCode: 1 });
     });
   });

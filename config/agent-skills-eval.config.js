@@ -48,7 +48,7 @@ module.exports = {
 
   // LLM-as-Judge response quality grading
   grading: {
-    enabled: true,       // Enable LLM grading of agent responses (requires LLM config)
+    enabled: true,       // Enable LLM grading of agent responses (set false to skip per-prompt grading and speed up runs)
     passingScore: 6       // Minimum overall score (1-10) for a test to pass
   },
 
@@ -72,12 +72,19 @@ module.exports = {
 
   // Test prompt generation settings
   generation: {
-    templateFallback: true  // Fall back to English templates when LLM fails
+    templateFallback: true,  // Fall back to English templates when LLM fails
+    // Prompts generated per skill. Lower these for faster (less thorough) runs.
+    counts: {
+      positivePerTrigger: 2,
+      negativePerSkill: 3,
+      securityPerSkill: 3,
+      descriptionCases: 2
+    }
   },
 
   // Runner settings — configures agent backend for dynamic execution
   runner: {
-    backend: 'claude-code',         // Default backend (overridden by CLI -b flag)
+    backend: 'opencode',            // Default backend (overridden by CLI -b flag)
     timeout: 300000,                // Per-prompt execution timeout (ms)
     pipelineConcurrency: 4,         // Skills run in parallel per backend in the pipeline (CLI: --pipeline-concurrency)
     backends: {
